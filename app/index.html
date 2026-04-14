@@ -134,7 +134,7 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 .nav-section-label { font-size:9px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:rgba(148,163,184,0.5); padding:10px 20px 4px; }
 .nav-item { display:flex; align-items:center; gap:12px; padding:11px 20px; font-size:13px; font-weight:500; color:#cbd5e1; cursor:pointer; transition:all 0.15s; border-left:3px solid transparent; }
 .nav-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
-.nav-item.active { background:var(--sidebar-active); color:#fff; border-left-color:var(--gold); font-weight:600; }
+.nav-item.active { background:var(--gold); color:#fff; border-left-color:#fff; font-weight:600; }
 .nav-item svg { flex-shrink:0; opacity:0.7; }
 .nav-item.active svg { opacity:1; }
 .sidebar-footer { padding:16px 20px; border-top:1px solid rgba(255,255,255,0.07); font-size:11px; color:rgba(148,163,184,0.4); }
@@ -562,7 +562,7 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section-label">Principal</div>
-    <div class="nav-item active" id="nav-venda" onclick="nav('venda')" style="background:#b8892a;color:#fff;border-left-color:#fff;font-weight:700">
+    <div class="nav-item active" id="nav-venda" onclick="nav('venda')">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
       PDV / Venda
     </div>
