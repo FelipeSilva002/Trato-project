@@ -2995,7 +2995,7 @@ async function confirmarPagamento() {
 
   // Salvar vendas no banco
   if (registrosVenda.length > 0) {
-    db.from('vendas').insert(registrosVenda);
+    await db.from('vendas').insert(registrosVenda);
   }
 
   fecharPgto();
@@ -3003,6 +3003,10 @@ async function confirmarPagamento() {
   limparCarrinho();
   renderDashboard();
   renderPDVGrid();
+  // Atualizar caixa após venda finalizada
+  if (_caixaAtual) {
+    await mostrarCaixaAberto();
+  }
 }
 
 // ── CADASTRO MANUAL ───────────────────────────────────
