@@ -807,6 +807,9 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="4" x2="8" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="16" y1="4" x2="16" y2="20"/></svg>
           Escanear Produtos
         </button>
+        <button class="btn btn-secondary" onclick="abrirVendaAvulsa()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">
+          + Venda Avulsa
+        </button>
       </div>
       <div id="venda-busca-resultado" class="pdv-busca-dropdown"></div>
 
@@ -4287,6 +4290,76 @@ window.esqueciSenha = async function () {
     msg.innerText = '';
   }, 5000);
 };
+
+// ── VENDA AVULSA ─────────────────────────────────────────
+function abrirVendaAvulsa() {
+  document.getElementById('avulsa-desc').value = '';
+  document.getElementById('avulsa-valor').value = '';
+  document.getElementById('avulsa-qtd').value = '1';
+  document.getElementById('modal-avulsa').classList.add('open');
+  setTimeout(() => document.getElementById('avulsa-desc').focus(), 100);
+}
+
+function fecharVendaAvulsa() {
+  document.getElementById('modal-avulsa').classList.remove('open');
+}
+
+function confirmarVendaAvulsa() {
+  const desc = document.getElementById('avulsa-desc').value.trim();
+  const valor = parseFloat(document.getElementById('avulsa-valor').value);
+  const qtd = parseInt(document.getElementById('avulsa-qtd').value) || 1;
+
+  if (!desc) { toast('Informe a descricao do produto.', 'error'); return; }
+  if (!valor || valor <= 0) { toast('Informe um valor valido.', 'error'); return; }
+
+  const itemExistente = carrinho.find(i => i.codigo === 'AVULSO' && i.nome === desc);
+  if (itemExistente) {
+    itemExistente.qtd += qtd;
+  } else {
+    carrinho.push({
+      codigo: 'AVULSO',
+      nome: desc,
+      preco: valor,
+      qtd: qtd,
+      max: 9999,
+      isAvulso: true
+    });
+  }
+
+  renderCarrinho();
+  fecharVendaAvulsa();
+  toast(desc + ' adicionado ao carrinho.', 'ok');
+}
 </script>
+<!-- MODAL VENDA AVULSA -->
+<div class="edit-modal-overlay" id="modal-avulsa">
+  <div class="edit-modal" style="max-width:380px">
+    <div class="edit-modal-header">
+      <div class="edit-modal-title">Venda Avulsa</div>
+      <button class="edit-modal-close" onclick="fecharVendaAvulsa()">x</button>
+    </div>
+    <div class="edit-modal-body">
+      <div class="form-group">
+        <label class="form-label">Descricao do produto *</label>
+        <input class="form-input" type="text" id="avulsa-desc" placeholder="Ex: Copo personalizado, Gelo...">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Valor (R$) *</label>
+          <input class="form-input" type="number" id="avulsa-valor" placeholder="0,00" min="0.01" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantidade</label>
+          <input class="form-input" type="number" id="avulsa-qtd" value="1" min="1" step="1">
+        </div>
+      </div>
+    </div>
+    <div class="edit-modal-footer">
+      <button class="btn btn-secondary" onclick="fecharVendaAvulsa()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarVendaAvulsa()">Adicionar ao Carrinho</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
