@@ -258,6 +258,30 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
 
 /* PRODUTOS GRID */
 .produtos-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+
+/* Cores por categoria */
+.cat-pill { display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid transparent;transition:all 0.15s;white-space:nowrap; }
+.cat-pill.ativo { border-color: currentColor; }
+.cat-pill:hover { opacity:0.85; }
+.cat-pills-wrap { display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px; }
+
+.cat-Cerveja      { background:rgba(251,191,36,0.15);  color:#f59e0b; }
+.cat-Vinho        { background:rgba(167,44,104,0.15);  color:#a72c68; }
+.cat-Refrigerante { background:rgba(59,130,246,0.15);  color:#3b82f6; }
+.cat-Suco         { background:rgba(249,115,22,0.15);  color:#f97316; }
+.cat-Destilado    { background:rgba(139,92,246,0.15);  color:#8b5cf6; }
+.cat-Espumante    { background:rgba(236,72,153,0.15);  color:#ec4899; }
+.cat-Licor        { background:rgba(168,85,247,0.15);  color:#a855f7; }
+.cat-Energetico   { background:rgba(16,185,129,0.15);  color:#10b981; }
+.cat-Doces        { background:rgba(244,114,182,0.15); color:#f472b6; }
+.cat-Cigarros     { background:rgba(107,114,128,0.15); color:#6b7280; }
+.cat-Tabacaria    { background:rgba(120,85,45,0.15);   color:#78552d; }
+.cat-Avulso       { background:rgba(20,184,166,0.15);  color:#14b8a6; }
+.cat-Outro        { background:rgba(100,116,139,0.15); color:#64748b; }
+.cat-Todos        { background:rgba(201,168,76,0.15);  color:#c9a84c; }
+
+/* Badge categoria no card */
+.badge-cat { display:inline-block;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:600; }
 .produto-card-item { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; transition:box-shadow 0.15s,border-color 0.15s; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
 .produto-card-item:hover { box-shadow:0 4px 16px rgba(0,0,0,0.1); border-color:var(--border2); }
 .produto-card-img { width:100%; height:140px; object-fit:contain; background:var(--surface2); padding:12px; display:block; }
@@ -787,9 +811,10 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       </div>
 
       <div id="produtos-grid-wrap">
-        <div style="margin-bottom:14px">
+        <div style="margin-bottom:10px">
           <input class="form-input" type="text" id="produtos-busca" placeholder="🔍  Buscar produto por nome, marca ou código..." oninput="filtrarProdutos()" autocomplete="off">
         </div>
+        <div class="cat-pills-wrap" id="cat-pills-wrap"></div>
         <div class="produtos-grid" id="produtos-grid"></div>
       </div>
     </div>
@@ -1188,16 +1213,18 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       <div class="fiado-total-valor" id="fiado-detalhe-total">R$ 0,00</div>
     </div>
     <div class="fiado-modal-body" id="fiado-detalhe-historico"></div>
-    <div class="fiado-modal-footer">
-      <button class="btn btn-secondary" onclick="abrirLancarFiado()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Lançar no Fiado
-      </button>
-      <button class="btn btn-secondary" onclick="abrirBipFiado()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="4" x2="8" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="16" y1="4" x2="16" y2="20"/></svg>
-        Escanear Produtos
-      </button>
-      <button class="btn btn-success" onclick="abrirPagamento()" style="flex:1;justify-content:center">
+    <div class="fiado-modal-footer" style="flex-direction:column;gap:8px">
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-secondary" onclick="abrirLancarFiado()" style="flex:1;justify-content:center">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Lançar no Fiado
+        </button>
+        <button class="btn btn-secondary" onclick="abrirBipFiado()" style="flex:1;justify-content:center">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="4" x2="8" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="16" y1="4" x2="16" y2="20"/></svg>
+          Escanear Produtos
+        </button>
+      </div>
+      <button class="btn btn-success" onclick="abrirPagamento()" style="width:100%;justify-content:center;padding:10px">
         ✅ Registrar Pagamento
       </button>
     </div>
@@ -1241,8 +1268,16 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
 
       <!-- BUSCA -->
       <div class="form-field">
-        <label class="form-label">Buscar produto</label>
-        <input class="form-input" type="text" id="fl-busca-produto" placeholder="🔍 Digite o nome do produto..." oninput="buscarProdutoFiado()" autocomplete="off">
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div style="width:90px;flex-shrink:0">
+            <label class="form-label" style="font-size:11px;margin-bottom:4px;display:block">Qtd</label>
+            <input class="form-input" type="number" id="fl-qtd-produto" value="1" min="1" step="1" style="text-align:center;font-weight:700">
+          </div>
+          <div style="flex:1">
+            <label class="form-label" style="font-size:11px;margin-bottom:4px;display:block">Produto</label>
+            <input class="form-input" type="text" id="fl-busca-produto" placeholder="🔍 Digite o nome do produto..." oninput="buscarProdutoFiado()" autocomplete="off">
+          </div>
+        </div>
         <div id="fl-busca-resultado" style="max-height:200px;overflow-y:auto;margin-top:6px"></div>
       </div>
 
@@ -1691,7 +1726,16 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
               style="width:100%;padding:8px 10px;border:1.5px solid var(--gold);border-radius:6px;font-size:13px;outline:none;color:var(--text);font-family:Inter,sans-serif">
           </div>
           <!-- BUSCA -->
-          <input class="form-input" type="text" id="mesa-busca-produto" placeholder="🔍 Buscar produto..." oninput="buscarProdutoMesa()" style="margin-bottom:8px">
+          <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px">
+            <div style="width:80px;flex-shrink:0">
+              <label style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;display:block">Qtd</label>
+              <input class="form-input" type="number" id="mesa-qtd-produto" value="1" min="1" step="1" style="text-align:center;font-weight:700">
+            </div>
+            <div style="flex:1">
+              <label style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;display:block">Produto</label>
+              <input class="form-input" type="text" id="mesa-busca-produto" placeholder="🔍 Buscar produto..." oninput="buscarProdutoMesa()" autocomplete="off">
+            </div>
+          </div>
           <div id="mesa-busca-resultado" style="max-height:220px;overflow-y:auto"></div>
         </div>
         <!-- Itens da mesa -->
@@ -2144,11 +2188,15 @@ function buscarProdutoFiado() {
 }
 
 async function selecionarProdutoFiado(id, nome, preco, estoqueQtd) {
+  const qtd = parseInt(document.getElementById("fl-qtd-produto")?.value) || 1;
   if (estoqueQtd <= 0) {
     if (!confirm(`${nome} está sem estoque. Lançar mesmo assim?`)) return;
+  } else if (qtd > estoqueQtd) {
+    if (!confirm(`Estoque disponível: ${estoqueQtd} un. Lançar ${qtd} mesmo assim?`)) return;
   }
-  const valor = parseFloat(preco) || 0;
-  const desc = `${nome} x1`;
+  const precoUnit = parseFloat(preco) || 0;
+  const valor = precoUnit * qtd;
+  const desc = `${nome} x${qtd}`;
   const now = new Date();
   const data = now.toLocaleDateString("pt-BR");
   const hora = now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
@@ -2156,7 +2204,7 @@ async function selecionarProdutoFiado(id, nome, preco, estoqueQtd) {
   // Descontar do estoque
   const p = estoque.find(x => x.id === id);
   if (p && p.quantidade > 0) {
-    p.quantidade = Math.max(0, p.quantidade - 1);
+    p.quantidade = Math.max(0, p.quantidade - qtd);
     await db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id);
   }
 
@@ -2172,14 +2220,16 @@ async function selecionarProdutoFiado(id, nome, preco, estoqueQtd) {
   window._flItensLancados.push({ desc, valor });
   renderMiniHistoricoFiado();
 
-  // Limpar busca para próximo item
+  // Limpar busca e resetar quantidade para próximo item
   document.getElementById("fl-busca-produto").value = "";
   document.getElementById("fl-busca-resultado").innerHTML = "";
   document.getElementById("fl-estoque-aviso").style.display = "none";
+  const qtdInput = document.getElementById("fl-qtd-produto");
+  if (qtdInput) qtdInput.value = "1";
   renderDetalhe();
   renderFiado();
   renderPDVGrid();
-  toast(`✅ ${nome} — R$ ${valor.toFixed(2).replace(".",",")} lançado!`, "ok");
+  toast(`✅ ${qtd}x ${nome} — R$ ${valor.toFixed(2).replace(".",",")} lançado!`, "ok");
   setTimeout(() => document.getElementById("fl-busca-produto").focus(), 50);
 }
 
@@ -2358,21 +2408,47 @@ function renderChartRosca(){
   });
 }
 
+let _catFiltro = "Todos";
+
+function getCatClass(cat) {
+  return (cat||"Outro").replace(/\s/g,"").replace(/[éè]/g,"e").replace(/[í]/g,"i").replace(/[óô]/g,"o").replace(/[ú]/g,"u");
+}
+
+function renderCatPills() {
+  const wrap = document.getElementById("cat-pills-wrap");
+  if (!wrap) return;
+  const cats = ["Todos", ...new Set(estoque.map(p => p.categoria||"Outro").sort())];
+  wrap.innerHTML = cats.map(c => {
+    const cl = c === "Todos" ? "cat-Todos" : "cat-" + getCatClass(c);
+    const ativo = _catFiltro === c ? "ativo" : "";
+    return `<span class="cat-pill ${cl} ${ativo}" onclick="setCatFiltro('${c}')">${c}</span>`;
+  }).join("");
+}
+
+function setCatFiltro(cat) {
+  _catFiltro = cat;
+  renderCatPills();
+  filtrarProdutos();
+}
+
 function filtrarProdutos(){
   const q = document.getElementById("produtos-busca")?.value.toLowerCase() || "";
-  const lista = q ? estoque.filter(p =>
+  let lista = estoque;
+  if (_catFiltro && _catFiltro !== "Todos") lista = lista.filter(p => (p.categoria||"Outro") === _catFiltro);
+  if (q) lista = lista.filter(p =>
     p.nome.toLowerCase().includes(q) ||
     (p.marca||"").toLowerCase().includes(q) ||
     (p.codigo||"").includes(q)
-  ) : estoque;
+  );
   document.getElementById("produtos-grid").innerHTML = lista.map(p => {
     const st=statusQtd(p.quantidade,p.minimo),foto=FOTOS[p.codigo];
+    const cl = "cat-" + getCatClass(p.categoria);
     return `<div class="produto-card-item" onclick="abrirEdicao('${p.codigo}')">
       ${foto?`<img class="produto-card-img" src="${foto}" alt="${p.nome}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:``}
       <div class="produto-card-placeholder" style="${foto?"display:none":""}">${EMOJIS[p.categoria]||"📦"}</div>
       <div class="produto-card-body">
         <div class="produto-card-nome" title="${p.nome}">${p.nome}</div>
-        <div class="produto-card-marca">${p.marca} · ${p.categoria}</div>
+        <div class="produto-card-marca">${p.marca} <span class="badge-cat ${cl}">${p.categoria}</span></div>
         <div class="produto-card-footer">
           <span class="produto-card-qtd ${st}">${p.quantidade} un.</span>
           <span class="badge badge-${st}">${labelStatus(st)}</span>
@@ -2386,6 +2462,8 @@ function filtrarProdutos(){
 
 function renderProdutos(){
   if(document.getElementById("produtos-busca")) document.getElementById("produtos-busca").value = "";
+  _catFiltro = "Todos";
+  renderCatPills();
   filtrarProdutos();
 }
 
@@ -4060,23 +4138,30 @@ function buscarProdutoMesa() {
 
 async function adicionarItemMesa(produtoId, nome, preco) {
   if (!mesaAtual) return;
+  const qtd = parseInt(document.getElementById("mesa-qtd-produto")?.value) || 1;
   const p = estoque.find(x => x.id === produtoId);
   if (p && p.quantidade <= 0) { toast(`${nome} sem estoque!`, "error"); return; }
+  if (p && qtd > p.quantidade) {
+    if (!confirm(`Estoque disponível: ${p.quantidade} un. Adicionar ${qtd} mesmo assim?`)) return;
+  }
   // Verificar se já existe na mesa
   const existe = mesaAtual.mesa_itens.find(i => i.produto_id === produtoId);
   if (existe) {
-    const { error } = await db.from('mesa_itens').update({ quantidade: existe.quantidade + 1 }).eq('id', existe.id);
-    if (!error) { existe.quantidade++; }
+    const novaQtd = existe.quantidade + qtd;
+    const { error } = await db.from('mesa_itens').update({ quantidade: novaQtd }).eq('id', existe.id);
+    if (!error) { existe.quantidade = novaQtd; }
   } else {
-    const { data, error } = await db.from('mesa_itens').insert([{ mesa_id: mesaAtual.id, produto_id: produtoId, nome, preco, quantidade: 1 }]).select().single();
+    const { data, error } = await db.from('mesa_itens').insert([{ mesa_id: mesaAtual.id, produto_id: produtoId, nome, preco, quantidade: qtd }]).select().single();
     if (!error) mesaAtual.mesa_itens.push(data);
   }
   // Descontar do estoque
-  if (p) { p.quantidade = Math.max(0, p.quantidade - 1); await db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id); }
+  if (p) { p.quantidade = Math.max(0, p.quantidade - qtd); await db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id); }
   document.getElementById("mesa-busca-produto").value = "";
   document.getElementById("mesa-busca-resultado").innerHTML = "";
+  const qtdInput = document.getElementById("mesa-qtd-produto");
+  if (qtdInput) qtdInput.value = "1";
   renderItensMesa();
-  toast(`${nome} adicionado!`, "ok");
+  toast(`${qtd}x ${nome} adicionado!`, "ok");
 }
 
 async function removerItemMesa(itemId) {
