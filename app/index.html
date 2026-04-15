@@ -856,6 +856,9 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
           </button>
         </div>
       </div>
+      <div style="margin-bottom:16px">
+        <input type="text" id="combos-busca" class="form-input" placeholder="🔍 Buscar combo..." oninput="filtrarCombos()" autocomplete="off" style="max-width:320px">
+      </div>
       <div class="produtos-grid" id="combos-grid"></div>
     </div>
 
@@ -3766,6 +3769,8 @@ async function carregarCombos() {
 }
 
 function renderCombos() {
+  const busca = document.getElementById('combos-busca');
+  if (busca) busca.value = '';
   const grid = document.getElementById("combos-grid");
   if (!grid) return;
   if (!combos.length) {
@@ -3773,6 +3778,34 @@ function renderCombos() {
     return;
   }
   grid.innerHTML = combos.map(c => {
+    const itens = (c.combo_itens||[]).map(i => `${i.quantidade}x ${i.produtos?.nome||"?"}`).join(", ");
+    return `<div class="produto-card-item" style="cursor:pointer" onclick="adicionarComboCarrinho('${c.id}')">
+      <div class="produto-card-placeholder">🎁</div>
+      <div class="produto-card-body">
+        <div class="produto-card-nome">${c.nome}</div>
+        <div class="produto-card-marca" style="font-size:11px">${itens}</div>
+        <div style="font-size:15px;font-weight:800;color:var(--gold);margin-top:8px">R$ ${parseFloat(c.preco).toFixed(2).replace(".",",")}</div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="event.stopPropagation();adicionarComboCarrinho('${c.id}')">🛒 Adicionar</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editarCombo('${c.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();excluirCombo('${c.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function filtrarCombos() {
+  const q = document.getElementById('combos-busca').value.toLowerCase().trim();
+  const grid = document.getElementById('combos-grid');
+  if (!grid) return;
+  if (!combos.length) return;
+  const filtrados = q ? combos.filter(c => c.nome.toLowerCase().includes(q)) : combos;
+  if (!filtrados.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;padding:40px">Nenhum combo encontrado.</div>';
+    return;
+  }
+  grid.innerHTML = filtrados.map(c => {
     const itens = (c.combo_itens||[]).map(i => `${i.quantidade}x ${i.produtos?.nome||"?"}`).join(", ");
     return `<div class="produto-card-item" style="cursor:pointer" onclick="adicionarComboCarrinho('${c.id}')">
       <div class="produto-card-placeholder">🎁</div>
