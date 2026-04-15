@@ -546,6 +546,10 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       <input class="login-input" type="password" id="login-pass" placeholder="Digite sua senha" autocomplete="current-password">
     </div>
     <button class="login-btn" id="login-btn">Entrar</button>
+    <a href="#" onclick="esqueciSenha(); return false;" style="font-size: 14px; display: block; margin-top: 8px;">
+  Esqueci minha senha
+</a>
+<div id="msg-reset" style="margin-top:10px; font-size:14px;"></div>
     <div id="login-loading" style="display:none;text-align:center;margin-top:10px;font-size:12px;color:var(--text3)"><span class="spinner"></span> Verificando...</div>
     <div class="login-footer">Powered by <span>TratoGestão</span></div>
   </div>
@@ -1888,7 +1892,7 @@ let historico = [];
 function mostrarErroLogin(msg) {
   const erro = document.getElementById("login-erro");
   erro.textContent = msg || "E-mail ou senha incorretos.";
-  erro.classList.add("show");
+  erro.style.display = "block";   // ← era classList.add("show")
   const btn = document.getElementById("login-btn");
   if (btn) { btn.disabled = false; btn.textContent = "Entrar"; }
   document.getElementById("login-loading").style.display = "none";
@@ -1900,6 +1904,13 @@ async function fazerLogin() {
   const email = document.getElementById("login-user").value.trim();
   const pass  = document.getElementById("login-pass").value;
   const btn   = document.getElementById("login-btn");
+
+  // Limpa erro anterior
+  const erroEl = document.getElementById("login-erro");
+  erroEl.style.display = "none";   // ← adicione esta linha
+
+  if (!email || !pass) { mostrarErroLogin("Preencha e-mail e senha."); return; }
+  // ... resto da função permanece igual
 
   document.getElementById("login-erro").classList.remove("show");
 
@@ -4178,6 +4189,45 @@ document.getElementById("pdv-bip-input").addEventListener("keydown", e => {
 }
 });
 
+window.esqueciSenha = async function () {
+  const email = document.getElementById('login-user').value.trim();
+  const msg = document.getElementById('msg-reset');
+
+  msg.innerText = '';
+
+  if (!email) {
+    msg.innerText = 'Digite seu e-mail primeiro';
+    msg.style.color = '#ef4444';
+    return;
+  }
+
+  msg.innerText = 'Enviando...';
+  msg.style.color = '#94a3b8';
+
+  try {
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/reset'
+    });
+
+    // 🔐 Mensagem SEMPRE neutra (independente de erro ou não)
+    msg.innerText = 'Se este e-mail estiver cadastrado, você receberá um link de recuperação.';
+    msg.style.color = '#22c55e';
+
+    // (opcional) loga erro só no console
+    if (error) {
+      console.error('Erro Supabase:', error.message);
+    }
+
+  } catch (err) {
+    console.error('Erro inesperado:', err);
+    msg.innerText = 'Erro ao processar solicitação';
+    msg.style.color = '#ef4444';
+  }
+
+  setTimeout(() => {
+    msg.innerText = '';
+  }, 5000);
+};
 </script>
 </body>
 </html>

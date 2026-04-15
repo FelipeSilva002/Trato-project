@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Redefinir Senha · Trato</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="https://lyywnhaqikolhemgmjia.supabase.co/storage/v1/object/public/logos/favicon.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #1a2e5a;
+      --navy-deep: #0f1e3d;
+      --blue:   #1e6fa8;
+      --teal:   #2ab5c5;
+      --teal-light: #4dcbda;
+      --bg:     #f0f4fa;
+      --white:  #ffffff;
+      --text:   #0f1e3d;
+      --text-dim: #6b7a99;
+      --border: #dce5f0;
+      --red:    #da1e28;
+      --green:  #0d7a4e;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #f0f4fa;
+      background-image: radial-gradient(circle, rgba(26,46,90,0.045) 1px, transparent 1px);
+      background-size: 28px 28px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--white);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--teal);
+      box-shadow: 0 20px 60px rgba(26,46,90,0.12);
+      width: 100%;
+      max-width: 420px;
+      padding: 48px 44px;
+      animation: fadeUp .4s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── LOGO AREA ── */
+    .logo-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #2ab5c5, #1e6fa8);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 24px rgba(42,181,197,0.3);
+    }
+
+    .logo-icon svg { width: 26px; height: 26px; color: #fff; }
+
+    .logo-name {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--navy);
+      letter-spacing: -0.5px;
+    }
+
+    .logo-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--teal);
+      background: rgba(42,181,197,0.1);
+      border: 1px solid rgba(42,181,197,0.25);
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-top: 6px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── HEADINGS ── */
+    h2 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--navy);
+      text-align: center;
+      margin-bottom: 8px;
+      letter-spacing: -0.4px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-dim);
+      text-align: center;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* ── FIELDS ── */
+    .field {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      letter-spacing: 0.2px;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap svg {
+      position: absolute;
+      left: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--text-dim);
+      pointer-events: none;
+      transition: color .2s;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      padding: 11px 14px 11px 38px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: #f8fafd;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+
+    input[type="password"]:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(42,181,197,0.12);
+      background: #fff;
+    }
+
+    input[type="password"]:focus + svg,
+    .input-wrap:focus-within svg {
+      color: var(--teal);
+    }
+
+    /* ── STRENGTH BAR ── */
+    .strength-wrap {
+      margin-top: 8px;
+      display: none;
+    }
+
+    .strength-wrap.show { display: block; }
+
+    .strength-bars {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+
+    .strength-bar {
+      height: 4px;
+      flex: 1;
+      border-radius: 2px;
+      background: var(--border);
+      transition: background .3s;
+    }
+
+    .strength-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    /* ── BUTTON ── */
+    button.primary {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--blue), var(--navy));
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity .2s, transform .1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: 0.2px;
+    }
+
+    button.primary:hover { opacity: .9; }
+    button.primary:active { transform: scale(.98); }
+    button.primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── MESSAGES ── */
+    .msg {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+      animation: fadeUp .25s ease both;
+    }
+
+    .msg.error   { display: block; background: rgba(218,30,40,0.08);  color: var(--red);   border: 1px solid rgba(218,30,40,0.15); }
+    .msg.success { display: block; background: rgba(13,122,78,0.08);  color: var(--green); border: 1px solid rgba(13,122,78,0.15); }
+
+    /* ── FOOTER ── */
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 22px;
+      font-size: 12px;
+      color: var(--text-dim);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color .15s;
+    }
+    .back-link:hover { color: var(--navy); }
+
+    .powered {
+      text-align: center;
+      font-size: 11px;
+      color: #b0bbc9;
+      margin-top: 28px;
+    }
+
+    /* ── SUCCESS STATE ── */
+    .success-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .success-state.show { display: flex; }
+
+    .check-circle {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, rgba(13,122,78,0.12), rgba(13,122,78,0.06));
+      border: 2px solid rgba(13,122,78,0.25);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .check-circle svg { width: 28px; height: 28px; color: var(--green); }
+
+    .success-state h3 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--navy);
+      margin-bottom: 10px;
+    }
+
+    .success-state p {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.6;
+      max-width: 280px;
+    }
+
+    .redirect-bar {
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 24px;
+      overflow: hidden;
+    }
+
+    .redirect-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal), var(--blue));
+      border-radius: 2px;
+      width: 0%;
+      transition: width 2s linear;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <div class="logo-name">Trato</div>
+    <div class="logo-tag">Redefinição de senha</div>
+  </div>
+
+  <!-- Form -->
+  <div id="form-area">
+    <h2>Nova senha</h2>
+    <p class="subtitle">Crie uma senha segura para proteger sua conta.</p>
+
+    <div class="field">
+      <label for="senha">Nova senha</label>
+      <div class="input-wrap">
+        <input type="password" id="senha" placeholder="Mínimo 6 caracteres" oninput="avaliarForca(this.value)" autocomplete="new-password">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div class="strength-wrap" id="strength-wrap">
+        <div class="strength-bars">
+          <div class="strength-bar" id="sb1"></div>
+          <div class="strength-bar" id="sb2"></div>
+          <div class="strength-bar" id="sb3"></div>
+          <div class="strength-bar" id="sb4"></div>
+        </div>
+        <div class="strength-label" id="strength-label">Muito fraca</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="confirmar">Confirmar nova senha</label>
+      <div class="input-wrap">
+        <input type="password" id="confirmar" placeholder="Repita a nova senha" autocomplete="new-password">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+    </div>
+
+    <button class="primary" id="btn-salvar">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Salvar nova senha
+    </button>
+
+    <div class="msg" id="msg"></div>
+    <a href="/app" class="back-link">← Voltar para o login</a>
+  </div>
+
+  <!-- Success state -->
+  <div class="success-state" id="success-state">
+    <div class="check-circle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h3>Senha alterada!</h3>
+    <p>Sua senha foi redefinida com sucesso. Você será redirecionado para o login.</p>
+    <div class="redirect-bar"><div class="redirect-fill" id="redirect-fill"></div></div>
+  </div>
+
+  <div class="powered">Powered by <strong style="color:#8fa3bf">TratoGestão</strong></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const { createClient } = window.supabase;
+  const sb = createClient(
+    'https://lyywnhaqikolhemgmjia.supabase.co',
+    'sb_publishable_rs3Jxd3v_lp2k6E65S2Rfg_Q6ZxWqkT'
+  );
+
+  // ── DETECTA SESSÃO DE RECUPERAÇÃO ────────────────────────
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      document.getElementById('btn-salvar').disabled = false;
+    }
+  });
+
+  // Valida se há token na URL
+  (async () => {
+    const hash = window.location.hash;
+    if (!hash || !hash.includes('access_token')) {
+      const msg = document.getElementById('msg');
+      msg.className = 'msg error';
+      msg.textContent = '❌ Link inválido. Acesse pelo e-mail de redefinição.';
+      document.getElementById('btn-salvar').disabled = true;
+    }
+  })();
+
+  // ── FORÇA DA SENHA ────────────────────────────────────
+  function avaliarForca(senha) {
+    const wrap  = document.getElementById('strength-wrap');
+    const label = document.getElementById('strength-label');
+    const bars  = ['sb1','sb2','sb3','sb4'].map(id => document.getElementById(id));
+
+    if (!senha) { wrap.classList.remove('show'); return; }
+    wrap.classList.add('show');
+
+    let score = 0;
+    if (senha.length >= 6)  score++;
+    if (senha.length >= 10) score++;
+    if (/[A-Z]/.test(senha) && /[0-9]/.test(senha)) score++;
+    if (/[^A-Za-z0-9]/.test(senha)) score++;
+
+    const configs = [
+      { color: '#da1e28', text: 'Muito fraca' },
+      { color: '#b45309', text: 'Fraca' },
+      { color: '#1e6fa8', text: 'Boa' },
+      { color: '#0d7a4e', text: 'Forte' },
+    ];
+
+    bars.forEach((bar, i) => {
+      bar.style.background = i < score ? configs[score - 1].color : 'var(--border)';
+    });
+    label.textContent = configs[score - 1]?.text || 'Muito fraca';
+    label.style.color  = configs[score - 1]?.color || 'var(--text-dim)';
+  }
+
+  // ── RESET ─────────────────────────────────────────────
+  async function resetarSenha() {
+    const senha     = document.getElementById('senha').value;
+    const confirmar = document.getElementById('confirmar').value;
+    const msg       = document.getElementById('msg');
+    const btn       = document.getElementById('btn-salvar');
+
+    msg.className = 'msg';
+    msg.textContent = '';
+
+    if (!senha || !confirmar) {
+      msg.className = 'msg error';
+      msg.textContent = '⚠️ Preencha todos os campos.';
+      return;
+    }
+
+    if (senha.length < 6) {
+      msg.className = 'msg error';
+      msg.textContent = '⚠️ A senha deve ter ao menos 6 caracteres.';
+      return;
+    }
+
+    if (senha !== confirmar) {
+      msg.className = 'msg error';
+      msg.textContent = '⚠️ As senhas não coincidem.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin .7s linear infinite"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Salvando...';
+
+    const { error } = await sb.auth.updateUser({ password: senha });
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Salvar nova senha';
+
+    if (error) {
+      msg.className = 'msg error';
+      msg.textContent = '❌ Erro ao redefinir senha. O link pode ter expirado.';
+      return;
+    }
+
+    document.getElementById('form-area').style.display = 'none';
+    const ss = document.getElementById('success-state');
+    ss.classList.add('show');
+    setTimeout(() => {
+      document.getElementById('redirect-fill').style.width = '100%';
+    }, 100);
+    setTimeout(() => { window.location.href = '/app'; }, 2200);
+  }
+
+  // ── Listeners ─────────────────────────────────────────
+  document.getElementById('btn-salvar').addEventListener('click', resetarSenha);
+
+  ['senha','confirmar'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') resetarSenha();
+    });
+  });
+</script>
+
+<style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</body>
+</html>
