@@ -1268,6 +1268,9 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="4" x2="8" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="16" y1="4" x2="16" y2="20"/></svg>
           Escanear Produtos
         </button>
+        <button class="btn btn-secondary" onclick="abrirVendaAvulsa('fiado')" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border);color:var(--text)">
+          + Venda Avulsa
+        </button>
       </div>
       <button class="btn btn-success" onclick="abrirPagamento()" style="width:100%;justify-content:center;padding:10px">
         ✅ Registrar Pagamento
@@ -1763,6 +1766,11 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
         <!-- Adicionar itens -->
         <div style="padding:18px;border-right:1px solid var(--border)">
           <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">Adicionar Item</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button class="btn btn-secondary" type="button" onclick="abrirVendaAvulsa('mesa')" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border);color:var(--text)">
+              + Venda Avulsa
+            </button>
+          </div>
           <!-- BIP -->
           <div style="margin-bottom:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
             <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px">📦 Leitor de código de barras</div>
@@ -2360,8 +2368,9 @@ function flAjustarPendente(i, d) {
   window._flPendente = window._flPendente || [];
   const it = window._flPendente[i];
   if (!it) return;
-  const p = estoque.find(x => x.id === it.produtoId);
-  const cap = p && p.quantidade > 0 ? p.quantidade : 999;
+  // Itens avulsos (sem produtoId) não têm limite de estoque.
+  const p = it.produtoId ? estoque.find(x => x.id === it.produtoId) : null;
+  const cap = it.produtoId ? (p && p.quantidade > 0 ? p.quantidade : 999) : 9999;
   it.qtd = Math.max(1, Math.min(it.qtd + d, cap));
   renderFlPendente();
 }
@@ -2393,12 +2402,29 @@ async function lancarUmFiadoNoBanco(id, nome, precoUnit, qtd) {
   window._flItensLancados.push({ desc, valor });
 }
 
+async function lancarFiadoAvulsoNoBanco(nome, precoUnit, qtd) {
+  const valor = precoUnit * qtd;
+  const desc = `${nome} x${qtd}`;
+  const now = new Date();
+  const data = now.toLocaleDateString("pt-BR");
+  const hora = now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const { data: lanc, error } = await db
+    .from("fiado_lancamentos")
+    .insert([{ fiado_cliente_id: clienteAtual.id, tipo:"debito", descricao:desc, valor, data, hora }])
+    .select().single();
+  if (error) throw error;
+  clienteAtual.lancamentos.push(lanc);
+  window._flItensLancados = window._flItensLancados || [];
+  window._flItensLancados.push({ desc, valor });
+}
+
 async function flLancarPendente() {
   if (!clienteAtual) return;
   window._flPendente = window._flPendente || [];
   const pend = [...window._flPendente];
   if (!pend.length) { toast("Adicione produtos à lista.", "error"); return; }
   for (const it of pend) {
+    if (!it.produtoId) continue; // avulso: não valida estoque
     const p = estoque.find(x => x.id === it.produtoId);
     const estoqueQtd = p ? p.quantidade : 0;
     if (estoqueQtd <= 0) {
@@ -2409,7 +2435,8 @@ async function flLancarPendente() {
   }
   try {
     for (const it of pend) {
-      await lancarUmFiadoNoBanco(it.produtoId, it.nome, it.preco, it.qtd);
+      if (!it.produtoId) await lancarFiadoAvulsoNoBanco(it.nome, it.preco, it.qtd);
+      else await lancarUmFiadoNoBanco(it.produtoId, it.nome, it.preco, it.qtd);
     }
   } catch (e) {
     toast("Erro ao lançar no fiado.", "error");
@@ -5025,37 +5052,61 @@ async function removerItemMesa(itemId) {
   if (!mesaAtual) return;
   const item = mesaAtual.mesa_itens.find(i => i.id === itemId);
   if (!item) return;
+  if (!window._mesaRemovendoIds) window._mesaRemovendoIds = new Set();
+  if (window._mesaRemovendoIds.has(itemId)) return;
+  window._mesaRemovendoIds.add(itemId);
+  const itensAntes = [...mesaAtual.mesa_itens];
+  const estoqueAntes = {};
+
+  // Remove da UI imediatamente para não depender da latência do banco.
   mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => i.id !== itemId);
   renderItensMesa();
   if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
-  const meta = parseMesaItemComboMeta(item.nome);
-  const comboId = meta?.comboId || null;
-  const updatesEstoque = [];
-  if (comboId) {
-    const c = combos.find(x => x.id === comboId);
-    if (c) {
-      const baseItens = Array.isArray(meta?.customItens) && meta.customItens.length
-        ? meta.customItens
-        : (c.combo_itens || []).map(ci => ({ produto_id: ci.produto_id, quantidade: ci.quantidade }));
-      for (const ci of baseItens) {
-        const p = estoque.find(x => x.id === ci.produto_id);
-        if (p) {
+
+  try {
+    const meta = parseMesaItemComboMeta(item.nome);
+    const comboId = meta?.comboId || null;
+
+    if (comboId) {
+      const c = combos.find(x => x.id === comboId);
+      if (c) {
+        const baseItens = Array.isArray(meta?.customItens) && meta.customItens.length
+          ? meta.customItens
+          : (c.combo_itens || []).map(ci => ({ produto_id: ci.produto_id, quantidade: ci.quantidade }));
+        for (const ci of baseItens) {
+          const p = estoque.find(x => x.id === ci.produto_id);
+          if (!p) continue;
+          estoqueAntes[p.id] = p.quantidade;
           p.quantidade += (ci.quantidade * item.quantidade);
-          updatesEstoque.push(db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id));
+          const { error } = await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
+          if (error) throw error;
         }
       }
+    } else if (item.produto_id) {
+      const p = estoque.find(x => x.id === item.produto_id);
+      if (p) {
+        estoqueAntes[p.id] = p.quantidade;
+        p.quantidade += item.quantidade;
+        const { error } = await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
+        if (error) throw error;
+      }
     }
-  } else {
-    const p = estoque.find(x => x.id === item.produto_id);
-    if (p) {
-      p.quantidade += item.quantidade;
-      updatesEstoque.push(db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id));
-    }
+
+    const { error: errDelete } = await db.from("mesa_itens").delete().eq("id", itemId);
+    if (errDelete) throw errDelete;
+  } catch (err) {
+    console.error(err);
+    mesaAtual.mesa_itens = itensAntes;
+    Object.entries(estoqueAntes).forEach(([pid, qtd]) => {
+      const p = estoque.find(x => x.id === pid);
+      if (p) p.quantidade = qtd;
+    });
+    renderItensMesa();
+    if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
+    toast("Erro ao remover item da mesa.", "error");
+  } finally {
+    window._mesaRemovendoIds.delete(itemId);
   }
-  await Promise.all([
-    db.from('mesa_itens').delete().eq('id', itemId),
-    ...updatesEstoque
-  ]);
 }
 
 async function fecharMesaConfirmar() {
@@ -5076,6 +5127,27 @@ async function fecharMesaConfirmar() {
 
   // Jogar todos os itens no carrinho do PDV
   itens.forEach(item => {
+    // Item avulso (sem produto_id): vai direto pro carrinho como avulso
+    if (!item.produto_id) {
+      const codAvulso = "AVULSO:" + String(item.nome || "").trim();
+      const existeAv = carrinhoByCodigo.get(codAvulso);
+      if (existeAv) {
+        existeAv.qtd += item.quantidade;
+      } else {
+        const novoAv = {
+          codigo: codAvulso,
+          nome: mesaItemNomeExibicao(item.nome),
+          preco: parseFloat(item.preco),
+          qtd: item.quantidade,
+          max: 9999,
+          isAvulso: true,
+          estoqueJaRetirado: true
+        };
+        carrinho.push(novoAv);
+        carrinhoByCodigo.set(codAvulso, novoAv);
+      }
+      return;
+    }
     const meta = parseMesaItemComboMeta(item.nome);
     const comboId = meta?.comboId || null;
     if (comboId) {
@@ -5307,7 +5379,13 @@ window.esqueciSenha = async function () {
 };
 
 // ── VENDA AVULSA ─────────────────────────────────────────
-function abrirVendaAvulsa() {
+function abrirVendaAvulsa(ctx) {
+  const tipo = ctx || "pdv";
+  window._avulsaCtx = { tipo };
+  const titulo = document.getElementById("avulsa-titulo");
+  const btnOk = document.getElementById("avulsa-confirm-btn");
+  if (titulo) titulo.textContent = tipo === "fiado" ? "Venda Avulsa — Fiado" : (tipo === "mesa" ? "Venda Avulsa — Mesa" : "Venda Avulsa");
+  if (btnOk) btnOk.textContent = tipo === "fiado" ? "Adicionar à lista" : (tipo === "mesa" ? "✅ Adicionar na mesa" : "Adicionar ao Carrinho");
   document.getElementById('avulsa-desc').value = '';
   document.getElementById('avulsa-valor').value = '';
   document.getElementById('avulsa-qtd').value = '1';
@@ -5319,13 +5397,49 @@ function fecharVendaAvulsa() {
   document.getElementById('modal-avulsa').classList.remove('open');
 }
 
-function confirmarVendaAvulsa() {
+async function confirmarVendaAvulsa() {
+  const tipo = window._avulsaCtx?.tipo || "pdv";
   const desc = document.getElementById('avulsa-desc').value.trim();
   const valor = parseFloat(document.getElementById('avulsa-valor').value);
   const qtd = parseInt(document.getElementById('avulsa-qtd').value) || 1;
 
   if (!desc) { toast('Informe a descricao do produto.', 'error'); return; }
   if (!valor || valor <= 0) { toast('Informe um valor valido.', 'error'); return; }
+
+  if (tipo === "fiado") {
+    if (!clienteAtual) { toast("Selecione um cliente do fiado primeiro.", "error"); return; }
+    const modalLancarAberto = document.getElementById("fiado-lancar-modal")?.classList.contains("open");
+    if (!modalLancarAberto) {
+      try {
+        await lancarFiadoAvulsoNoBanco(desc, valor, qtd);
+      } catch (e) {
+        console.error(e);
+        toast("Erro ao lançar venda avulsa no fiado.", "error");
+        return;
+      }
+      fecharVendaAvulsa();
+      renderDetalhe();
+      renderFiado();
+      toast(desc + " lançado no fiado.", "ok");
+      return;
+    }
+    window._flPendente = window._flPendente || [];
+    const ex = window._flPendente.find(i => !i.produtoId && i.nome === desc && parseFloat(i.preco) === valor);
+    if (ex) ex.qtd += qtd;
+    else window._flPendente.push({ produtoId: null, nome: desc, preco: valor, qtd: qtd, isAvulso: true });
+    renderFlPendente();
+    fecharVendaAvulsa();
+    toast(desc + " adicionado à lista.", "ok");
+    setTimeout(() => document.getElementById("fl-busca-produto")?.focus(), 50);
+    return;
+  }
+
+  if (tipo === "mesa") {
+    if (!mesaAtual) { toast("Abra um pedido de mesa primeiro.", "error"); return; }
+    adicionarItemMesaAvulso(desc, valor, qtd);
+    fecharVendaAvulsa();
+    return;
+  }
 
   const itemExistente = carrinho.find(i => i.codigo === 'AVULSO' && i.nome === desc);
   if (itemExistente) {
@@ -5345,12 +5459,63 @@ function confirmarVendaAvulsa() {
   fecharVendaAvulsa();
   toast(desc + ' adicionado ao carrinho.', 'ok');
 }
+
+async function adicionarItemMesaAvulso(desc, preco, qtd) {
+  if (!mesaAtual) return;
+  const mesaId = mesaAtual.id;
+
+  const existente = mesaAtual.mesa_itens.find(i => !i.produto_id && i.nome === desc && parseFloat(i.preco) === parseFloat(preco));
+  let prevQtd = null;
+  let tempId = null;
+
+  if (existente) {
+    prevQtd = existente.quantidade;
+    existente.quantidade = (prevQtd || 0) + qtd;
+  } else {
+    tempId = "temp-avulso-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    mesaAtual.mesa_itens.push({
+      id: tempId,
+      mesa_id: mesaId,
+      produto_id: null,
+      nome: desc,
+      preco: preco,
+      quantidade: qtd,
+      isAvulso: true
+    });
+  }
+
+  renderItensMesa();
+  if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
+  toast(`${desc} adicionado — ajuste a quantidade ao lado.`, "ok");
+
+  try {
+    if (existente) {
+      const { error } = await db.from("mesa_itens").update({ quantidade: existente.quantidade }).eq("id", existente.id);
+      if (error) throw error;
+    } else {
+      const { data, error } = await db
+        .from("mesa_itens")
+        .insert([{ mesa_id: mesaId, produto_id: null, nome: desc, preco: preco, quantidade: qtd }])
+        .select()
+        .single();
+      if (error) throw error;
+      const idx = mesaAtual.mesa_itens.findIndex(i => i.id === tempId);
+      if (idx >= 0) mesaAtual.mesa_itens[idx] = data;
+    }
+  } catch (err) {
+    console.error(err);
+    if (tempId) mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => i.id !== tempId);
+    else if (existente && prevQtd !== null) existente.quantidade = prevQtd;
+    renderItensMesa();
+    toast("Erro ao adicionar item avulso na mesa.", "error");
+  }
+}
 </script>
 <!-- MODAL VENDA AVULSA -->
 <div class="edit-modal-overlay" id="modal-avulsa">
   <div class="edit-modal" style="max-width:380px">
     <div class="edit-modal-header">
-      <div class="edit-modal-title">Venda Avulsa</div>
+      <div class="edit-modal-title" id="avulsa-titulo">Venda Avulsa</div>
       <button onclick="fecharVendaAvulsa()" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px">✕</button>
     </div>
     <div class="edit-modal-body">
@@ -5371,7 +5536,7 @@ function confirmarVendaAvulsa() {
     </div>
     <div class="edit-modal-footer">
       <button class="btn btn-secondary" onclick="fecharVendaAvulsa()">Cancelar</button>
-      <button class="btn btn-primary" onclick="confirmarVendaAvulsa()">Adicionar ao Carrinho</button>
+      <button class="btn btn-primary" id="avulsa-confirm-btn" onclick="confirmarVendaAvulsa()">Adicionar ao Carrinho</button>
     </div>
   </div>
 </div>
