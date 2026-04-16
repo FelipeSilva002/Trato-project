@@ -963,37 +963,81 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
 
       <!-- STATUS CAIXA ABERTO -->
       <div id="caixa-aberto" style="display:none">
-        <!-- KPIs -->
-        <div class="kpi-row" style="margin-bottom:20px">
-          <div class="kpi-card">
-            <div class="kpi-label">Abertura</div>
-            <div class="kpi-value" id="caixa-kpi-abertura" style="font-size:18px">R$ 0,00</div>
-            <div class="kpi-sub" id="caixa-kpi-hora">—</div>
+        <!-- KPIs REDESIGN -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+
+          <!-- Abertura -->
+          <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:32px;height:32px;border-radius:8px;background:#f0f7ff;display:flex;align-items:center;justify-content:center;font-size:15px">🔓</div>
+              <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Abertura</span>
+            </div>
+            <div id="caixa-kpi-abertura" style="font-size:22px;font-weight:800;color:var(--text);line-height:1">R$ 0,00</div>
+            <div id="caixa-kpi-hora" style="font-size:11px;color:var(--text3)">—</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Vendas em Dinheiro</div>
-            <div class="kpi-value" id="caixa-kpi-dinheiro" style="color:var(--green);font-size:18px">R$ 0,00</div>
+
+          <!-- Dinheiro -->
+          <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:32px;height:32px;border-radius:8px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;font-size:15px">💵</div>
+              <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Dinheiro</span>
+            </div>
+            <div id="caixa-kpi-dinheiro" style="font-size:22px;font-weight:800;color:var(--green);line-height:1">R$ 0,00</div>
+            <div style="font-size:11px;color:var(--text3)">Vendas em espécie</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Vendas em Pix</div>
-            <div class="kpi-value" id="caixa-kpi-pix" style="color:var(--blue);font-size:18px">R$ 0,00</div>
+
+          <!-- Pix -->
+          <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:32px;height:32px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:15px">📱</div>
+              <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Pix</span>
+            </div>
+            <div id="caixa-kpi-pix" style="font-size:22px;font-weight:800;color:var(--blue);line-height:1">R$ 0,00</div>
+            <div style="font-size:11px;color:var(--text3)">Transferências Pix</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Vendas em Cartão</div>
-            <div class="kpi-value" id="caixa-kpi-cartao" style="color:var(--gold);font-size:18px">R$ 0,00</div>
+
+          <!-- Cartão -->
+          <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:32px;height:32px;border-radius:8px;background:#fdf3dc;display:flex;align-items:center;justify-content:center;font-size:15px">💳</div>
+              <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Cartão</span>
+            </div>
+            <div id="caixa-kpi-cartao" style="font-size:22px;font-weight:800;color:var(--gold);line-height:1">R$ 0,00</div>
+            <div style="font-size:11px;color:var(--text3)">Débito / Crédito</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Total Vendas</div>
-            <div class="kpi-value" id="caixa-kpi-total" style="font-size:18px">R$ 0,00</div>
+        </div>
+
+        <!-- Segunda linha: totais destaque -->
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:20px">
+
+          <!-- Total Vendas - destaque -->
+          <div style="background:linear-gradient(135deg,#0a0a0a,#283141);border-radius:12px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.15)">
+            <div>
+              <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Total Vendas</div>
+              <div id="caixa-kpi-total" style="font-size:28px;font-weight:800;color:#fff;line-height:1">R$ 0,00</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">Soma de todas as formas</div>
+            </div>
+            <div style="font-size:36px;opacity:0.3">🛒</div>
           </div>
-          <div class="kpi-card" style="border-color:var(--red)">
-            <div class="kpi-label">Despesas</div>
-            <div class="kpi-value" id="caixa-kpi-sangria" style="color:var(--red);font-size:18px">R$ 0,00</div>
+
+          <!-- Despesas -->
+          <div style="background:#fff1f1;border:1px solid #fecaca;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:32px;height:32px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:15px">📤</div>
+              <span style="font-size:11px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.5px">Despesas</span>
+            </div>
+            <div id="caixa-kpi-sangria" style="font-size:22px;font-weight:800;color:var(--red);line-height:1">R$ 0,00</div>
+            <div style="font-size:11px;color:var(--red);opacity:.7">Sangrias e saídas</div>
           </div>
-          <div class="kpi-card" style="border-color:var(--green)">
-            <div class="kpi-label">Esperado em Caixa</div>
-            <div class="kpi-value" id="caixa-kpi-esperado" style="color:var(--green);font-size:18px">R$ 0,00</div>
-            <div class="kpi-sub">Abertura + Dinheiro − Despesas</div>
+
+          <!-- Esperado em caixa -->
+          <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:32px;height:32px;border-radius:8px;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:15px">✅</div>
+              <span style="font-size:11px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:.5px">Esperado</span>
+            </div>
+            <div id="caixa-kpi-esperado" style="font-size:22px;font-weight:800;color:var(--green);line-height:1">R$ 0,00</div>
+            <div style="font-size:11px;color:var(--green);opacity:.7">Abertura + Dinheiro − Despesas</div>
           </div>
         </div>
 
@@ -3803,9 +3847,11 @@ function calcularDiferenca() {
 }
 
 let _movimentoTipo = null;
+let _movimentoEditandoId = null;
 
 function abrirMovimento(tipo) {
   _movimentoTipo = tipo;
+  _movimentoEditandoId = null;
   const isSangria = tipo === "sangria";
   document.getElementById("movimento-titulo").textContent = isSangria ? "− Despesas" : "+ Gorjetas";
   document.getElementById("movimento-desc-box").textContent = isSangria
@@ -3814,6 +3860,7 @@ function abrirMovimento(tipo) {
   document.getElementById("movimento-desc-box").style.background = isSangria ? "var(--red-dim)" : "var(--green-dim)";
   document.getElementById("movimento-desc-box").style.color = isSangria ? "var(--red)" : "var(--green)";
   document.getElementById("movimento-confirmar-btn").style.background = isSangria ? "var(--red)" : "var(--green)";
+  document.getElementById("movimento-confirmar-btn").textContent = isSangria ? "− Registrar Despesa" : "+ Registrar Gorjeta";
   document.getElementById("movimento-valor").value = "";
   document.getElementById("movimento-descricao").value = "";
   document.getElementById("movimento-modal").classList.add("open");
@@ -3827,16 +3874,26 @@ async function confirmarMovimento() {
   const descricao = document.getElementById("movimento-descricao").value.trim();
   if (!valor || valor <= 0) { toast("Informe o valor.", "error"); return; }
   if (!descricao) { toast("Informe a descrição.", "error"); return; }
-  const { error } = await db.from('caixa_movimentos').insert([{
-    caixa_id: _caixaAtual.id,
-    cliente_id: _clienteId,
-    tipo: _movimentoTipo,
-    valor,
-    descricao
-  }]);
-  if (error) { toast("Erro ao registrar movimento.", "error"); console.error(error); return; }
-  fecharMovimento();
-  toast(`${_movimentoTipo === "sangria" ? "Despesa" : "Gorjeta"} de R$ ${valor.toFixed(2).replace(".",",")} registrado!`, "ok");
+
+  if (_movimentoEditandoId) {
+    // Modo edição
+    const { error } = await db.from('caixa_movimentos').update({ valor, descricao }).eq('id', _movimentoEditandoId);
+    if (error) { toast("Erro ao salvar alteração.", "error"); console.error(error); return; }
+    fecharMovimento();
+    toast(`Lançamento atualizado com sucesso!`, "ok");
+  } else {
+    // Modo novo
+    const { error } = await db.from('caixa_movimentos').insert([{
+      caixa_id: _caixaAtual.id,
+      cliente_id: _clienteId,
+      tipo: _movimentoTipo,
+      valor,
+      descricao
+    }]);
+    if (error) { toast("Erro ao registrar movimento.", "error"); console.error(error); return; }
+    fecharMovimento();
+    toast(`${_movimentoTipo === "sangria" ? "Despesa" : "Gorjeta"} de R$ ${valor.toFixed(2).replace(".",",")} registrado!`, "ok");
+  }
   await renderMovimentos();
 }
 
@@ -3869,14 +3926,52 @@ async function renderMovimentos() {
   }
   lista.innerHTML = movs.map(m => {
     const isSangria = m.tipo === "sangria";
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:${isSangria?"var(--red)":"var(--green)"}">${isSangria?"− Despesas":"+ Gorjetas"}</div>
-        <div style="font-size:11px;color:var(--text3)">${m.descricao} · ${new Date(m.criado_em).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
+    const cor = isSangria ? "var(--red)" : "var(--green)";
+    const bg = isSangria ? "#fff1f1" : "#ecfdf5";
+    const borda = isSangria ? "#fecaca" : "#a7f3d0";
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;background:${bg};border:1px solid ${borda};border-radius:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:${cor};margin-bottom:2px">${isSangria?"📤 Despesa":"📥 Gorjeta"}</div>
+        <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.descricao}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(m.criado_em).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
       </div>
-      <span style="font-weight:700;color:${isSangria?"var(--red)":"var(--green)"}">R$ ${parseFloat(m.valor).toFixed(2).replace(".",",")}</span>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:10px">
+        <span style="font-size:15px;font-weight:800;color:${cor}">R$ ${parseFloat(m.valor).toFixed(2).replace(".",",")}</span>
+        <button onclick="editarMovimento('${m.id}')" style="background:none;border:1px solid ${borda};color:${cor};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">✏️</button>
+        <button onclick="excluirMovimento('${m.id}')" style="background:none;border:1px solid ${borda};color:${cor};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">✕</button>
+      </div>
     </div>`;
   }).join("");
+}
+
+let _movimentosCache = [];
+
+async function excluirMovimento(id) {
+  if (!confirm("Excluir este lançamento?")) return;
+  const { error } = await db.from('caixa_movimentos').delete().eq('id', id);
+  if (error) { toast("Erro ao excluir.", "error"); return; }
+  toast("Lançamento excluído.", "ok");
+  await renderMovimentos();
+}
+
+async function editarMovimento(id) {
+  const { data: movs } = await db.from('caixa_movimentos').select('*').eq('id', id).single();
+  if (!movs) { toast("Lançamento não encontrado.", "error"); return; }
+  _movimentoEditandoId = id;
+  _movimentoTipo = movs.tipo;
+  const isSangria = movs.tipo === "sangria";
+  document.getElementById("movimento-titulo").textContent = isSangria ? "✏️ Editar Despesa" : "✏️ Editar Gorjeta";
+  document.getElementById("movimento-desc-box").textContent = isSangria
+    ? "Retirada de dinheiro do caixa"
+    : "Entrada extra de dinheiro no caixa";
+  document.getElementById("movimento-desc-box").style.background = isSangria ? "var(--red-dim)" : "var(--green-dim)";
+  document.getElementById("movimento-desc-box").style.color = isSangria ? "var(--red)" : "var(--green)";
+  document.getElementById("movimento-confirmar-btn").style.background = isSangria ? "var(--red)" : "var(--green)";
+  document.getElementById("movimento-confirmar-btn").textContent = "✏️ Salvar alteração";
+  document.getElementById("movimento-valor").value = movs.valor;
+  document.getElementById("movimento-descricao").value = movs.descricao;
+  document.getElementById("movimento-modal").classList.add("open");
+  setTimeout(() => document.getElementById("movimento-valor").focus(), 100);
 }
 
 async function abrirCaixa() {
@@ -4556,8 +4651,6 @@ async function adicionarComboNaMesa(comboId) {
   if (!first) { toast("Combo sem produtos.", "error"); return; }
   const nomeRow = `🎁 ${c.nome} [[combo:${c.id}]]`;
   const existe = mesaAtual.mesa_itens.find(i => parseMesaItemComboId(i.nome) === comboId);
-
-  // Atualiza estoque local imediatamente (otimista) e dispara batch paralelo no banco
   const updatesEstoque = [];
   for (const item of comboItens) {
     const p = estoque.find(x => x.id === item.produto_id);
@@ -4566,17 +4659,14 @@ async function adicionarComboNaMesa(comboId) {
       updatesEstoque.push(db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id));
     }
   }
-
   if (existe) {
     const novaQtd = existe.quantidade + 1;
-    // Dispara todas as atualizações em paralelo
     const [{ error }] = await Promise.all([
       db.from("mesa_itens").update({ quantidade: novaQtd }).eq("id", existe.id),
       ...updatesEstoque
     ]);
     if (!error) existe.quantidade = novaQtd;
   } else {
-    // Dispara insert + updates de estoque em paralelo
     const [insertResult] = await Promise.all([
       db.from("mesa_itens").insert([{
         mesa_id: mesaAtual.id,
@@ -4935,16 +5025,12 @@ async function removerItemMesa(itemId) {
   if (!mesaAtual) return;
   const item = mesaAtual.mesa_itens.find(i => i.id === itemId);
   if (!item) return;
-
-  // Atualização otimista: remove da UI imediatamente, sem esperar o banco
   mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => i.id !== itemId);
   renderItensMesa();
   if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
-
   const meta = parseMesaItemComboMeta(item.nome);
   const comboId = meta?.comboId || null;
   const updatesEstoque = [];
-
   if (comboId) {
     const c = combos.find(x => x.id === comboId);
     if (c) {
@@ -4966,8 +5052,6 @@ async function removerItemMesa(itemId) {
       updatesEstoque.push(db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id));
     }
   }
-
-  // Dispara delete + todos os updates de estoque em paralelo
   await Promise.all([
     db.from('mesa_itens').delete().eq('id', itemId),
     ...updatesEstoque
