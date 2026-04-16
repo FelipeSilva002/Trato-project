@@ -4963,94 +4963,83 @@ async function adicionarItemMesa(produtoId, nome, preco) {
   }
 }
 
-async function ajustarQtdItemMesa(itemId, delta) {
+// ── AJUSTE DE QUANTIDADE DA MESA (debounce) ──────────────────────────────────
+// Acumula cliques localmente e dispara UMA só requisição ao banco após 600ms de inatividade.
+// Isso elimina a race condition e reduz drasticamente as chamadas ao Supabase.
+const _mesaQtdPendente = {}; // { [itemId]: { timer, delta } }
+
+function ajustarQtdItemMesa(itemId, delta) {
   if (!mesaAtual || !delta) return;
-  const item = mesaAtual.mesa_itens.find(i => i.id === itemId);
+  const itemIdStr = String(itemId);
+
+  const item = mesaAtual.mesa_itens.find(i => String(i.id) === itemIdStr);
   if (!item) return;
-  const meta = parseMesaItemComboMeta(item.nome);
-  const comboId = meta?.comboId || null;
-  if (comboId) {
-    const c = combos.find(x => x.id === comboId);
-    if (!c) { toast("Combo não encontrado (cadastro). Ajuste indisponível.", "error"); return; }
-    const baseItens = Array.isArray(meta?.customItens) && meta.customItens.length
-      ? meta.customItens
-      : (c.combo_itens || []).map(ci => ({ produto_id: ci.produto_id, quantidade: ci.quantidade }));
-    if (delta > 0) {
-      for (const ci of baseItens) {
-        const p = estoque.find(x => x.id === ci.produto_id);
-        if (p && p.quantidade < (ci.quantidade * delta)) {
-          if (!confirm(`Estoque baixo (${p.nome}: ${p.quantidade} un.). Adicionar mais ${delta} combo(s) mesmo assim?`)) return;
-          break;
-        }
-      }
-      for (const ci of baseItens) {
-        const p = estoque.find(x => x.id === ci.produto_id);
-        if (p) {
-          p.quantidade = Math.max(0, p.quantidade - (ci.quantidade * delta));
-          await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
-        }
-      }
-      const novaQtd = item.quantidade + delta;
-      const { error } = await db.from("mesa_itens").update({ quantidade: novaQtd }).eq("id", itemId);
-      if (!error) item.quantidade = novaQtd;
-    } else {
-      const reduz = Math.min(item.quantidade, -delta);
-      if (reduz <= 0) return;
-      for (const ci of baseItens) {
-        const p = estoque.find(x => x.id === ci.produto_id);
-        if (p) {
-          p.quantidade += (ci.quantidade * reduz);
-          await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
-        }
-      }
-      const novaQtd = item.quantidade - reduz;
-      if (novaQtd <= 0) {
-        await db.from("mesa_itens").delete().eq("id", itemId);
-        mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => i.id !== itemId);
-      } else {
-        const { error } = await db.from("mesa_itens").update({ quantidade: novaQtd }).eq("id", itemId);
-        if (!error) item.quantidade = novaQtd;
-      }
-    }
-    renderItensMesa();
-    if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
-    return;
+
+  // Acumula o delta na memória e atualiza a UI imediatamente
+  if (!_mesaQtdPendente[itemIdStr]) {
+    _mesaQtdPendente[itemIdStr] = { timer: null, delta: 0 };
   }
-  const p = estoque.find(x => x.id === item.produto_id);
-  if (delta > 0) {
-    if (p && p.quantidade < delta) {
-      if (!confirm(`Estoque disponível: ${p.quantidade} un. Aumentar mesmo assim?`)) return;
-    }
-    if (p) {
-      p.quantidade = Math.max(0, p.quantidade - delta);
-      await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
-    }
-    const novaQtd = item.quantidade + delta;
-    const { error } = await db.from("mesa_itens").update({ quantidade: novaQtd }).eq("id", itemId);
-    if (!error) item.quantidade = novaQtd;
+  const pendente = _mesaQtdPendente[itemIdStr];
+
+  // Calcula nova quantidade pretendida
+  const novaQtd = item.quantidade + delta;
+  if (novaQtd < 0) return; // não deixa negativo
+
+  // Atualiza UI na hora
+  if (novaQtd <= 0) {
+    mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => String(i.id) !== itemIdStr);
   } else {
-    const reduz = Math.min(item.quantidade, -delta);
-    if (reduz <= 0) return;
-    if (p) {
-      p.quantidade += reduz;
-      await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
-    }
-    const novaQtd = item.quantidade - reduz;
-    if (novaQtd <= 0) {
-      await db.from("mesa_itens").delete().eq("id", itemId);
-      mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => i.id !== itemId);
-    } else {
-      const { error } = await db.from("mesa_itens").update({ quantidade: novaQtd }).eq("id", itemId);
-      if (!error) item.quantidade = novaQtd;
-    }
+    item.quantidade = novaQtd;
   }
+  pendente.delta += delta;
   renderItensMesa();
   if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
+
+  // Cancela o timer anterior e agenda novo flush
+  clearTimeout(pendente.timer);
+  pendente.timer = setTimeout(() => _flushQtdItemMesa(itemIdStr), 600);
 }
 
+async function _flushQtdItemMesa(itemIdStr) {
+  const pendente = _mesaQtdPendente[itemIdStr];
+  if (!pendente || pendente.delta === 0) { delete _mesaQtdPendente[itemIdStr]; return; }
+  if (!mesaAtual) { delete _mesaQtdPendente[itemIdStr]; return; }
+
+  const deltaTotal = pendente.delta;
+  delete _mesaQtdPendente[itemIdStr]; // limpa antes do await
+
+  // Item pode ter sido removido da lista (qtd chegou a 0)
+  const item = mesaAtual.mesa_itens.find(i => String(i.id) === itemIdStr);
+  const itemRemovidoLocal = !item; // foi removido otimisticamente
+
+  try {
+    // Atualiza estoque se produto vinculado
+    const produtoId = item?.produto_id ?? null;
+    if (produtoId && deltaTotal !== 0) {
+      const p = estoque.find(x => x.id === produtoId);
+      if (p) {
+        // deltaTotal positivo = adicionou mais na mesa = consome estoque
+        p.quantidade = Math.max(0, p.quantidade - deltaTotal);
+        await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", produtoId);
+      }
+    }
+
+    if (itemRemovidoLocal) {
+      // Quantidade chegou a zero: remove do banco
+      await db.from("mesa_itens").delete().eq("id", itemIdStr);
+    } else {
+      const { error } = await db.from("mesa_itens").update({ quantidade: item.quantidade }).eq("id", itemIdStr);
+      if (error) throw error;
+    }
+  } catch (err) {
+    console.error("Erro ao sincronizar quantidade da mesa:", err);
+    toast("Erro ao salvar quantidade. Recarregue o pedido.", "error");
+  }
+}
 async function removerItemMesa(itemId) {
   if (!mesaAtual) return;
-  const item = mesaAtual.mesa_itens.find(i => i.id === itemId);
+  const itemIdStr = String(itemId);
+  const item = mesaAtual.mesa_itens.find(i => String(i.id) === itemIdStr);
   if (!item) return;
   if (!window._mesaRemovendoIds) window._mesaRemovendoIds = new Set();
   if (window._mesaRemovendoIds.has(itemId)) return;
@@ -5059,7 +5048,7 @@ async function removerItemMesa(itemId) {
   const estoqueAntes = {};
 
   // Remove da UI imediatamente para não depender da latência do banco.
-  mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => i.id !== itemId);
+  mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => String(i.id) !== itemIdStr);
   renderItensMesa();
   if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
 
@@ -5500,7 +5489,12 @@ async function adicionarItemMesaAvulso(desc, preco, qtd) {
         .single();
       if (error) throw error;
       const idx = mesaAtual.mesa_itens.findIndex(i => i.id === tempId);
-      if (idx >= 0) mesaAtual.mesa_itens[idx] = data;
+      if (idx >= 0) {
+        mesaAtual.mesa_itens[idx] = data;
+        // Re-renderiza para os botões usarem o ID real do banco (não mais o tempId)
+        renderItensMesa();
+        if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
+      }
     }
   } catch (err) {
     console.error(err);
