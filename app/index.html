@@ -1967,6 +1967,9 @@ async function carregarEstoque() {
     estoque = produtos;
     // Popular FOTOS com imagem_url do banco
     produtos.forEach(p => {
+      // Campos pré-processados para busca rápida em listas.
+      p._nomeLower = String(p.nome || '').toLowerCase();
+      p._codigoStr = String(p.codigo || '');
       if (p.imagem_url) FOTOS[p.codigo] = p.imagem_url;
     });
   }
@@ -2955,6 +2958,8 @@ async function registrar(){
     const { data: inserted, error } = await db.from('produtos').insert([novoProduto]).select().single();
     if(error){ toast("Erro ao cadastrar produto.","error"); console.error(error); return; }
     estoque.push(inserted);
+    inserted._nomeLower = String(inserted.nome || '').toLowerCase();
+    inserted._codigoStr = String(inserted.codigo || '');
     if(!FOTOS[produtoAtual.codigo])FOTOS[produtoAtual.codigo]=null;
   }
 
@@ -3298,6 +3303,8 @@ async function salvarCadastroManual() {
   }
 
   estoque.push(data);
+  data._nomeLower = String(data.nome || '').toLowerCase();
+  data._codigoStr = String(data.codigo || '');
   if (!FOTOS[codigo]) FOTOS[codigo] = null;
   fecharCadastroManual();
   renderProdutos();
@@ -3383,6 +3390,8 @@ async function salvarEdicao() {
   }
 
   Object.assign(p, updates);
+  p._nomeLower = String(p.nome || '').toLowerCase();
+  p._codigoStr = String(p.codigo || '');
   FOTOS[codigo] = novaImagem || null;
   fecharEdicao();
   renderProdutos();
@@ -3993,10 +4002,31 @@ document.getElementById("fiado-bip-input").addEventListener("keydown", async e =
 let combos = [];
 let _comboItensTemp = [];
 
+let _combosCarregadosParaMesa = false;
+let _combosCarregandoParaMesa = null;
+
 async function carregarCombos() {
   const { data } = await db.from('combos').select('*, combo_itens(*, produtos(*))').eq('cliente_id', _clienteId).eq('ativo', true);
   combos = data || [];
+  // Cache local para busca mais rápida.
+  combos.forEach(c => { c._nomeLower = String(c.nome || '').toLowerCase(); });
+  _combosCarregadosParaMesa = true;
   renderCombos();
+}
+
+// Carrega combos para a tela de “mesa” sem renderizar a grade global.
+async function garantirCombosParaMesa() {
+  if (_combosCarregadosParaMesa) return;
+  if (_combosCarregandoParaMesa) return _combosCarregandoParaMesa;
+
+  _combosCarregandoParaMesa = (async () => {
+    const { data } = await db.from('combos').select('*, combo_itens(*, produtos(*))').eq('cliente_id', _clienteId).eq('ativo', true);
+    combos = data || [];
+    combos.forEach(c => { c._nomeLower = String(c.nome || '').toLowerCase(); });
+    _combosCarregadosParaMesa = true;
+  })();
+
+  try { await _combosCarregandoParaMesa; } finally { _combosCarregandoParaMesa = null; }
 }
 
 function renderCombos() {
@@ -4070,16 +4100,32 @@ function abrirNovoCombo() {
 
 function fecharNovoCombo() { document.getElementById("combo-modal").classList.remove("open"); }
 
+let _comboBuscaTimer = null;
 function buscarProdutoCombo() {
-  const q = document.getElementById("combo-busca-produto").value.toLowerCase();
+  const inputEl = document.getElementById("combo-busca-produto");
   const res = document.getElementById("combo-busca-resultado");
-  if (!q) { res.innerHTML = ""; return; }
-  const lista = estoque.filter(p => p.nome.toLowerCase().includes(q) || (p.codigo||"").includes(q)).slice(0,8);
-  res.innerHTML = lista.map(p => `
+  if (!inputEl || !res) return;
+
+  const q = String(inputEl.value || "").toLowerCase().trim();
+  clearTimeout(_comboBuscaTimer);
+
+  _comboBuscaTimer = setTimeout(() => {
+    if (!q) { res.innerHTML = ""; return; }
+
+    const lista = estoque
+      .filter(p => {
+        const nomeLower = p._nomeLower ?? String(p.nome || '').toLowerCase();
+        const codigoStr = p._codigoStr ?? String(p.codigo || '');
+        return nomeLower.includes(q) || codigoStr.includes(q);
+      })
+      .slice(0,8);
+
+    res.innerHTML = lista.map(p => `
     <div onclick="adicionarItemCombo('${p.id}','${p.nome.replace(/'/g,"\\'")}')" style="padding:9px 12px;cursor:pointer;border-radius:6px;margin-bottom:4px;background:var(--surface2);font-size:13px;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--gold-dim,#fdf3dc)'" onmouseout="this.style.background='var(--surface2)'">
       <span>${p.nome}</span>
       <span style="font-size:11px;color:var(--text3)">${p.categoria}</span>
     </div>`).join("") || '<div style="font-size:12px;color:var(--text3);padding:8px">Nenhum produto encontrado.</div>';
+  }, 120);
 }
 
 function renderItensComboTemp() {
@@ -4212,7 +4258,7 @@ function renderCombosMesaLista() {
   const el = document.getElementById("mesa-combos-lista");
   if (!el) return;
   const q = (document.getElementById("mesa-busca-combo")?.value || "").toLowerCase().trim();
-  const lista = !combos.length ? [] : (q ? combos.filter(c => c.nome.toLowerCase().includes(q)) : combos);
+  const lista = !combos.length ? [] : (q ? combos.filter(c => (c._nomeLower ?? String(c.nome || '').toLowerCase()).includes(q)) : combos);
   if (!lista.length) {
     el.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:6px 0">${!combos.length ? "Nenhum combo cadastrado (cadastre na aba Combos)." : "Nenhum combo encontrado."}</div>`;
     return;
@@ -4346,19 +4392,37 @@ function mesaComboCustomRemover(i) {
   st.itens.splice(i, 1);
   renderMesaComboCustomItens();
 }
+let _mesaComboBuscaTimer = null;
 function buscarProdutoMesaComboCustom() {
   const st = window._mesaComboCustom;
-  const q = document.getElementById("mesa-combo-busca-produto")?.value?.toLowerCase() || "";
+  const inputEl = document.getElementById("mesa-combo-busca-produto");
   const res = document.getElementById("mesa-combo-busca-resultado");
-  if (!res) return;
-  if (!st || !q.trim()) { res.innerHTML = ""; return; }
-  const lista = estoque.filter(p => p.nome.toLowerCase().includes(q) || (p.codigo||"").includes(q)).slice(0, 8);
-  res.innerHTML = lista.map(p => `
+  if (!res || !inputEl) return;
+
+  const q = String(inputEl.value || "").toLowerCase().trim();
+  clearTimeout(_mesaComboBuscaTimer);
+
+  if (!st) { res.innerHTML = ""; return; }
+
+  _mesaComboBuscaTimer = setTimeout(() => {
+    if (!window._mesaComboCustom) { res.innerHTML = ""; return; }
+    if (!q) { res.innerHTML = ""; return; }
+
+    const lista = estoque
+      .filter(p => {
+        const nomeLower = p._nomeLower ?? String(p.nome || '').toLowerCase();
+        const codigoStr = p._codigoStr ?? String(p.codigo || '');
+        return nomeLower.includes(q) || codigoStr.includes(q);
+      })
+      .slice(0, 8);
+
+    res.innerHTML = lista.map(p => `
     <div onclick="selecionarProdutoMesaComboCustom('${p.id}')" style="padding:9px 12px;cursor:pointer;border-radius:6px;margin-bottom:4px;background:var(--surface2);font-size:13px;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--gold-dim,#fdf3dc)'" onmouseout="this.style.background='var(--surface2)'">
       <span>${p.nome}</span>
       <span style="font-weight:700;color:var(--text3)">${p.quantidade} un.</span>
     </div>
   `).join("") || '<div style="font-size:12px;color:var(--text3);padding:8px">Nenhum produto encontrado.</div>';
+  }, 120);
 }
 function selecionarProdutoMesaComboCustom(produtoId) {
   const st = window._mesaComboCustom;
@@ -4433,7 +4497,7 @@ async function confirmarMesaComboCustom() {
     if (first?.produto_id) itemMesa.produto_id = first.produto_id;
     fecharMesaComboCustom();
     renderItensMesa();
-    renderPDVGrid();
+    if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
     toast("✅ Combo atualizado na mesa!", "ok");
     return;
   }
@@ -4465,7 +4529,7 @@ async function confirmarMesaComboCustom() {
   mesaAtual.mesa_itens.push(data);
   fecharMesaComboCustom();
   renderItensMesa();
-  renderPDVGrid();
+  if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
   toast("🎁 Combo personalizado adicionado!", "ok");
 }
 
@@ -4480,49 +4544,56 @@ async function adicionarComboNaMesa(comboId) {
   if (!mesaAtual) return;
   const c = combos.find(x => x.id === comboId);
   if (!c) { toast("Combo não encontrado.", "error"); return; }
-  for (const item of (c.combo_itens || [])) {
+  const comboItens = c.combo_itens || [];
+  for (const item of comboItens) {
     const p = estoque.find(x => x.id === item.produto_id);
     if (!p || p.quantidade < item.quantidade) {
       toast(`Estoque insuficiente para o combo: ${p?.nome || "produto"}`, "error");
       return;
     }
   }
-  const first = (c.combo_itens || [])[0];
+  const first = comboItens[0];
   if (!first) { toast("Combo sem produtos.", "error"); return; }
   const nomeRow = `🎁 ${c.nome} [[combo:${c.id}]]`;
   const existe = mesaAtual.mesa_itens.find(i => parseMesaItemComboId(i.nome) === comboId);
+
+  // Atualiza estoque local imediatamente (otimista) e dispara batch paralelo no banco
+  const updatesEstoque = [];
+  for (const item of comboItens) {
+    const p = estoque.find(x => x.id === item.produto_id);
+    if (p) {
+      p.quantidade = Math.max(0, p.quantidade - item.quantidade);
+      updatesEstoque.push(db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id));
+    }
+  }
+
   if (existe) {
     const novaQtd = existe.quantidade + 1;
-    for (const item of (c.combo_itens || [])) {
-      const p = estoque.find(x => x.id === item.produto_id);
-      if (p) {
-        p.quantidade = Math.max(0, p.quantidade - item.quantidade);
-        await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
-      }
-    }
-    const { error } = await db.from("mesa_itens").update({ quantidade: novaQtd }).eq("id", existe.id);
+    // Dispara todas as atualizações em paralelo
+    const [{ error }] = await Promise.all([
+      db.from("mesa_itens").update({ quantidade: novaQtd }).eq("id", existe.id),
+      ...updatesEstoque
+    ]);
     if (!error) existe.quantidade = novaQtd;
   } else {
-    for (const item of (c.combo_itens || [])) {
-      const p = estoque.find(x => x.id === item.produto_id);
-      if (p) {
-        p.quantidade = Math.max(0, p.quantidade - item.quantidade);
-        await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
-      }
-    }
-    const { data, error } = await db.from("mesa_itens").insert([{
-      mesa_id: mesaAtual.id,
-      produto_id: first.produto_id,
-      nome: nomeRow,
-      preco: parseFloat(c.preco),
-      quantidade: 1
-    }]).select().single();
+    // Dispara insert + updates de estoque em paralelo
+    const [insertResult] = await Promise.all([
+      db.from("mesa_itens").insert([{
+        mesa_id: mesaAtual.id,
+        produto_id: first.produto_id,
+        nome: nomeRow,
+        preco: parseFloat(c.preco),
+        quantidade: 1
+      }]).select().single(),
+      ...updatesEstoque
+    ]);
+    const { data, error } = insertResult;
     if (!error && data) mesaAtual.mesa_itens.push(data);
   }
   document.getElementById("mesa-busca-combo").value = "";
   renderCombosMesaLista();
   renderItensMesa();
-  renderPDVGrid();
+  if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
   toast(`🎁 ${c.nome} adicionado à mesa!`, "ok");
 }
 
@@ -4590,18 +4661,40 @@ async function excluirMesa(id, numero) {
 async function abrirPedidoMesa(id) {
   mesaAtual = mesas.find(m => m.id === id);
   if (!mesaAtual) return;
-  await carregarCombos();
-  const { data } = await db.from('mesa_itens').select('*').eq('mesa_id', id);
-  mesaAtual.mesa_itens = data || [];
+
+  const pedidoMesaId = id;
+
+  // Abre o modal imediatamente para não “congelar” a UI enquanto busca dados.
+  document.getElementById("mesa-pedido-modal").classList.add("open");
+
   document.getElementById("mesa-pedido-titulo").textContent = mesaAtual.numero;
   document.getElementById("mesa-busca-produto").value = "";
   document.getElementById("mesa-busca-resultado").innerHTML = "";
   document.getElementById("mesa-bip-input").value = "";
   const buscaCombo = document.getElementById("mesa-busca-combo");
   if (buscaCombo) buscaCombo.value = "";
-  renderCombosMesaLista();
-  renderItensMesa();
-  document.getElementById("mesa-pedido-modal").classList.add("open");
+
+  const combosEl = document.getElementById("mesa-combos-lista");
+  if (combosEl) combosEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Carregando combos...</div>';
+  const itensEl = document.getElementById("mesa-itens-lista");
+  if (itensEl) itensEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Carregando itens...</div>';
+  document.getElementById("mesa-total").textContent = "R$ 0,00";
+  mesaAtual.mesa_itens = [];
+
+  garantirCombosParaMesa()
+    .then(() => {
+      if (!mesaAtual || mesaAtual.id !== pedidoMesaId) return;
+      renderCombosMesaLista();
+    })
+    .catch(() => { /* noop: mantém placeholder */ });
+
+  (async () => {
+    const { data } = await db.from('mesa_itens').select('*').eq('mesa_id', pedidoMesaId);
+    if (!mesaAtual || mesaAtual.id !== pedidoMesaId) return;
+    mesaAtual.mesa_itens = data || [];
+    renderItensMesa();
+  })();
+
   setTimeout(() => document.getElementById("mesa-bip-input").focus(), 150);
 }
 
@@ -4640,16 +4733,37 @@ function renderItensMesa() {
   }).join("");
 }
 
+let _mesaBuscaTimer = null;
 function buscarProdutoMesa() {
-  const q = document.getElementById("mesa-busca-produto").value.toLowerCase();
+  const inputEl = document.getElementById("mesa-busca-produto");
   const res = document.getElementById("mesa-busca-resultado");
-  if (!q) { res.innerHTML = ""; return; }
-  const lista = estoque.filter(p => p.nome.toLowerCase().includes(q) || (p.codigo||"").includes(q)).slice(0,8);
-  res.innerHTML = lista.map(p => `
+  if (!inputEl || !res) return;
+
+  const q = String(inputEl.value || "").toLowerCase().trim();
+  clearTimeout(_mesaBuscaTimer);
+
+  // Debounce: evita filtrar o estoque inteiro a cada tecla.
+  _mesaBuscaTimer = setTimeout(() => {
+    if (!document.getElementById("mesa-pedido-modal")?.classList.contains("open")) return;
+
+    if (!q) { res.innerHTML = ""; return; }
+
+    const lista = estoque
+      .filter(p => {
+        const nomeLower = p._nomeLower ?? String(p.nome || '').toLowerCase();
+        const codigoStr = p._codigoStr ?? String(p.codigo || '');
+        return nomeLower.includes(q) || codigoStr.includes(q);
+      })
+      .slice(0, 8);
+
+    res.innerHTML =
+      lista.map(p => `
     <div onclick="adicionarItemMesa('${p.id}','${p.nome.replace(/'/g,"\\'")}',${p.preco})" style="padding:9px 12px;cursor:pointer;border-radius:6px;margin-bottom:4px;background:var(--surface2);font-size:13px;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--gold-dim,#fdf3dc)'" onmouseout="this.style.background='var(--surface2)'">
       <span>${p.nome}</span>
       <span style="font-weight:700;color:var(--gold)">R$ ${parseFloat(p.preco||0).toFixed(2).replace(".",",")}</span>
-    </div>`).join("") || '<div style="font-size:12px;color:var(--text3);padding:8px">Nenhum produto encontrado.</div>';
+    </div>`).join("") ||
+      '<div style="font-size:12px;color:var(--text3);padding:8px">Nenhum produto encontrado.</div>';
+  }, 120);
 }
 
 async function adicionarItemMesa(produtoId, nome, preco) {
@@ -4660,21 +4774,76 @@ async function adicionarItemMesa(produtoId, nome, preco) {
   if (p && qtd > p.quantidade) {
     if (!confirm(`Estoque disponível: ${p.quantidade} un. Adicionar mesmo assim?`)) return;
   }
+
+  // Update otimista para o clique ficar instantâneo.
   const existe = mesaAtual.mesa_itens.find(i => i.produto_id === produtoId && !parseMesaItemComboId(i.nome));
+  const mesaId = mesaAtual.id;
+
+  let prevItemQtd = null;
+  let prevStockQtd = null;
+  let tempId = null;
+
+  if (p) prevStockQtd = p.quantidade;
+
   if (existe) {
-    const novaQtd = existe.quantidade + qtd;
-    const { error } = await db.from('mesa_itens').update({ quantidade: novaQtd }).eq('id', existe.id);
-    if (!error) { existe.quantidade = novaQtd; }
+    prevItemQtd = existe.quantidade;
+    existe.quantidade = prevItemQtd + qtd;
   } else {
-    const { data, error } = await db.from('mesa_itens').insert([{ mesa_id: mesaAtual.id, produto_id: produtoId, nome, preco, quantidade: qtd }]).select().single();
-    if (!error) mesaAtual.mesa_itens.push(data);
+    tempId = "temp-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    mesaAtual.mesa_itens.push({
+      id: tempId,
+      mesa_id: mesaId,
+      produto_id: produtoId,
+      nome,
+      preco,
+      quantidade: qtd
+    });
   }
-  if (p) { p.quantidade = Math.max(0, p.quantidade - qtd); await db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id); }
+
+  if (p) { p.quantidade = Math.max(0, p.quantidade - qtd); }
+
+  // Atualiza UI antes de persistir no banco.
   document.getElementById("mesa-busca-produto").value = "";
   document.getElementById("mesa-busca-resultado").innerHTML = "";
   renderItensMesa();
-  renderPDVGrid();
+  if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
   toast(`${nome} adicionado — ajuste a quantidade ao lado.`, "ok");
+
+  // Persiste em background.
+  try {
+    if (existe) {
+      const novaQtd = existe.quantidade;
+      const { error } = await db.from('mesa_itens').update({ quantidade: novaQtd }).eq('id', existe.id);
+      if (error) throw error;
+    } else {
+      const { data, error } = await db
+        .from('mesa_itens')
+        .insert([{ mesa_id: mesaId, produto_id: produtoId, nome, preco, quantidade: qtd }])
+        .select()
+        .single();
+      if (error) throw error;
+
+      const idx = mesaAtual.mesa_itens.findIndex(i => i.id === tempId);
+      if (idx >= 0) mesaAtual.mesa_itens[idx] = data;
+    }
+
+    if (p) {
+      const { error: estError } = await db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id);
+      if (estError) throw estError;
+    }
+  } catch (err) {
+    // Reverter se falhar.
+    console.error(err);
+    if (tempId) {
+      mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => i.id !== tempId);
+    } else if (existe && prevItemQtd !== null) {
+      existe.quantidade = prevItemQtd;
+    }
+    if (p && prevStockQtd !== null) p.quantidade = prevStockQtd;
+    renderItensMesa();
+    if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
+    toast("Erro ao adicionar produto à mesa.", "error");
+  }
 }
 
 async function ajustarQtdItemMesa(itemId, delta) {
@@ -4727,7 +4896,7 @@ async function ajustarQtdItemMesa(itemId, delta) {
       }
     }
     renderItensMesa();
-    renderPDVGrid();
+    if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
     return;
   }
   const p = estoque.find(x => x.id === item.produto_id);
@@ -4759,15 +4928,23 @@ async function ajustarQtdItemMesa(itemId, delta) {
     }
   }
   renderItensMesa();
-  renderPDVGrid();
+  if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
 }
 
 async function removerItemMesa(itemId) {
   if (!mesaAtual) return;
   const item = mesaAtual.mesa_itens.find(i => i.id === itemId);
   if (!item) return;
+
+  // Atualização otimista: remove da UI imediatamente, sem esperar o banco
+  mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => i.id !== itemId);
+  renderItensMesa();
+  if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
+
   const meta = parseMesaItemComboMeta(item.nome);
   const comboId = meta?.comboId || null;
+  const updatesEstoque = [];
+
   if (comboId) {
     const c = combos.find(x => x.id === comboId);
     if (c) {
@@ -4778,18 +4955,23 @@ async function removerItemMesa(itemId) {
         const p = estoque.find(x => x.id === ci.produto_id);
         if (p) {
           p.quantidade += (ci.quantidade * item.quantidade);
-          await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
+          updatesEstoque.push(db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id));
         }
       }
     }
   } else {
     const p = estoque.find(x => x.id === item.produto_id);
-    if (p) { p.quantidade += item.quantidade; await db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id); }
+    if (p) {
+      p.quantidade += item.quantidade;
+      updatesEstoque.push(db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id));
+    }
   }
-  await db.from('mesa_itens').delete().eq('id', itemId);
-  mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => i.id !== itemId);
-  renderItensMesa();
-  renderPDVGrid();
+
+  // Dispara delete + todos os updates de estoque em paralelo
+  await Promise.all([
+    db.from('mesa_itens').delete().eq('id', itemId),
+    ...updatesEstoque
+  ]);
 }
 
 async function fecharMesaConfirmar() {
@@ -4800,23 +4982,32 @@ async function fecharMesaConfirmar() {
   const numeroMesa = mesaAtual.numero;
   if (!confirm(`Enviar pedidos da ${numeroMesa} para o carrinho?\nTotal: R$ ${total.toFixed(2).replace(".",",")}`)) return;
 
-  await carregarCombos();
+  // Usa cache/fluxo otimizado para a mesa (evita reconsultar/renderizar combos globalmente).
+  await garantirCombosParaMesa();
+
+  // Criar lookup tables para reduzir custo de busca (find) dentro do loop.
+  const combosById = new Map((combos || []).map(c => [c.id, c]));
+  const estoqueById = new Map((estoque || []).map(p => [p.id, p]));
+  const carrinhoByCodigo = new Map((carrinho || []).map(ci => [ci.codigo, ci]));
 
   // Jogar todos os itens no carrinho do PDV
   itens.forEach(item => {
     const meta = parseMesaItemComboMeta(item.nome);
     const comboId = meta?.comboId || null;
     if (comboId) {
-      const c = combos.find(x => x.id === comboId);
+      const c = combosById.get(comboId);
       if (c) {
         const baseItens = Array.isArray(meta?.customItens) && meta.customItens.length
           ? meta.customItens
           : (c.combo_itens || []).map(ci => ({ produto_id: ci.produto_id, quantidade: ci.quantidade }));
         const cod = "combo-" + comboId;
-        const existeCombo = carrinho.find(x => x.codigo === cod);
-        if (existeCombo) { existeCombo.qtd += item.quantidade; existeCombo.estoqueJaRetirado = true; }
+        const existeCombo = carrinhoByCodigo.get(cod);
+        if (existeCombo) {
+          existeCombo.qtd += item.quantidade;
+          existeCombo.estoqueJaRetirado = true;
+        }
         else {
-          carrinho.push({
+          const novo = {
             codigo: cod,
             nome: mesaItemNomeExibicao(item.nome) || c.nome,
             preco: parseFloat(c.preco),
@@ -4825,25 +5016,29 @@ async function fecharMesaConfirmar() {
             comboId,
             comboItens: baseItens,
             estoqueJaRetirado: true
-          });
+          };
+          carrinho.push(novo);
+          carrinhoByCodigo.set(cod, novo);
         }
         return;
       }
     }
-    const p = estoque.find(x => x.id === item.produto_id);
+    const p = estoqueById.get(item.produto_id);
     const codigoCarrinho = p ? p.codigo : item.produto_id;
-    const existe = carrinho.find(x => !x.isCombo && x.codigo === codigoCarrinho);
-    if (existe) {
+    const existe = carrinhoByCodigo.get(codigoCarrinho);
+    if (existe && !existe.isCombo) {
       existe.qtd += item.quantidade;
       existe.estoqueJaRetirado = true;
     } else {
-      carrinho.push({
+      const novo = {
         codigo: codigoCarrinho,
         nome: mesaItemNomeExibicao(item.nome),
         preco: parseFloat(item.preco),
         qtd: item.quantidade,
         estoqueJaRetirado: true
-      });
+      };
+      carrinho.push(novo);
+      carrinhoByCodigo.set(codigoCarrinho, novo);
     }
   });
 
@@ -4856,7 +5051,6 @@ async function fecharMesaConfirmar() {
   mesaAtual = null;
   renderMesas();
   nav("venda");
-  renderCarrinho();
   toast(`✅ Itens da ${numeroMesa} enviados ao carrinho! Total: R$ ${total.toFixed(2).replace(".",",")}`, "ok");
 }
 
