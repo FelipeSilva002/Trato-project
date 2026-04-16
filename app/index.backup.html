@@ -1757,43 +1757,6 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
   </div>
 </div>
 
-<!-- MODAL PERSONALIZAR COMBO (MESA) -->
-<div class="edit-modal-overlay" id="mesa-combo-custom-modal" style="z-index:210">
-  <div class="edit-modal" style="width:520px;max-width:95vw">
-    <div class="edit-modal-header">
-      <div class="edit-modal-title" id="mesa-combo-custom-titulo">Personalizar Combo</div>
-      <button class="modal-close" onclick="fecharMesaComboCustom()">✕</button>
-    </div>
-    <div class="edit-modal-body">
-      <div class="produto-info-box" style="margin-bottom:12px">
-        <div class="produto-info-nome" id="mesa-combo-custom-nome">—</div>
-        <div class="produto-info-sub">Esta alteração vale só para esta mesa.</div>
-      </div>
-
-      <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:10px">
-        <div style="flex:1">
-          <label class="form-label" style="font-size:11px;margin-bottom:4px;display:block">Buscar produto (para trocar/adicionar)</label>
-          <input class="form-input" type="text" id="mesa-combo-busca-produto" placeholder="🔍 Digite o nome ou código..." oninput="buscarProdutoMesaComboCustom()" autocomplete="off">
-        </div>
-        <button class="btn btn-secondary" type="button" onclick="mesaComboCustomModoAdicionar()">+ Adicionar item</button>
-      </div>
-      <div id="mesa-combo-busca-resultado" style="max-height:160px;overflow-y:auto;margin-bottom:10px"></div>
-
-      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Itens do combo</div>
-      <div id="mesa-combo-custom-itens" style="max-height:240px;overflow-y:auto"></div>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-        <span style="font-size:12px;font-weight:700;color:var(--text2)">Preço do combo</span>
-        <span style="font-size:16px;font-weight:900;color:var(--gold)" id="mesa-combo-custom-preco">R$ 0,00</span>
-      </div>
-    </div>
-    <div class="edit-modal-footer">
-      <button class="btn btn-secondary" onclick="fecharMesaComboCustom()">Cancelar</button>
-      <button class="btn btn-success" onclick="confirmarMesaComboCustom()">✅ Adicionar na mesa</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL LICENÇA EXCEDIDA -->
 <div class="edit-modal-overlay" id="licenca-modal">
   <div class="edit-modal" style="width:400px;text-align:center">
@@ -4170,38 +4133,12 @@ function adicionarComboCarrinho(id) {
 }
 
 // ── MESAS ──────────────────────────────────────────────
-const MESA_COMBO_TAG_RE = /\s*\[\[combo:([^\];]+)(?:;custom:([^\]]+))?\]\]\s*$/;
-
-function b64EncodeJson(obj) {
-  const json = JSON.stringify(obj);
-  const bytes = new TextEncoder().encode(json);
-  let bin = "";
-  bytes.forEach(b => (bin += String.fromCharCode(b)));
-  return btoa(bin);
-}
-function b64DecodeJson(b64) {
-  const bin = atob(b64);
-  const bytes = new Uint8Array([...bin].map(ch => ch.charCodeAt(0)));
-  const json = new TextDecoder().decode(bytes);
-  return JSON.parse(json);
-}
-
-function parseMesaItemComboMeta(nome) {
-  if (!nome) return null;
-  const m = String(nome).match(MESA_COMBO_TAG_RE);
-  if (!m) return null;
-  const comboId = m[1];
-  const customB64 = m[2] || null;
-  let customItens = null;
-  if (customB64) {
-    try { customItens = b64DecodeJson(customB64); } catch { customItens = null; }
-  }
-  return { comboId, customB64, customItens };
-}
+const MESA_COMBO_TAG_RE = /\s*\[\[combo:([^\]]+)\]\]\s*$/;
 
 function parseMesaItemComboId(nome) {
-  const meta = parseMesaItemComboMeta(nome);
-  return meta ? meta.comboId : null;
+  if (!nome) return null;
+  const m = String(nome).match(MESA_COMBO_TAG_RE);
+  return m ? m[1] : null;
 }
 
 function mesaItemNomeExibicao(nome) {
@@ -4219,261 +4156,12 @@ function renderCombosMesaLista() {
   }
   el.innerHTML = lista.map(c => {
     const itens = (c.combo_itens || []).map(i => `${i.quantidade}x ${i.produtos?.nome || "?"}`).join(", ");
-    return `<div style="padding:10px 10px;border-radius:6px;margin-bottom:6px;background:var(--surface2);font-size:12px;border:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700">${c.nome}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:2px;max-height:32px;overflow:hidden">${itens}</div>
-          <div style="font-size:13px;font-weight:900;color:var(--gold);margin-top:4px">R$ ${parseFloat(c.preco).toFixed(2).replace(".",",")}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-          <button class="btn btn-primary btn-sm" type="button" onclick="adicionarComboNaMesa('${c.id}')">Adicionar</button>
-          <button class="btn btn-secondary btn-sm" type="button" onclick="abrirMesaComboCustom('${c.id}')">Personalizar</button>
-        </div>
-      </div>
+    return `<div onclick="adicionarComboNaMesa('${c.id}')" style="padding:8px 10px;cursor:pointer;border-radius:6px;margin-bottom:4px;background:var(--surface2);font-size:12px;border:1px solid var(--border)" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="font-weight:600">${c.nome}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px;max-height:32px;overflow:hidden">${itens}</div>
+      <div style="font-size:13px;font-weight:800;color:var(--gold);margin-top:4px">R$ ${parseFloat(c.preco).toFixed(2).replace(".",",")}</div>
     </div>`;
   }).join("");
-}
-
-// Personalização de combo na mesa (não altera cadastro)
-window._mesaComboCustom = null; // { comboId, nome, preco, itens:[{produto_id,nome,qtd}] , mode:{type, idx}, mesaItemId?, originalPayload? }
-
-function abrirMesaComboCustom(comboId) {
-  if (!mesaAtual) return;
-  const c = combos.find(x => x.id === comboId);
-  if (!c) { toast("Combo não encontrado.", "error"); return; }
-  const itens = (c.combo_itens || []).map(ci => ({
-    produto_id: ci.produto_id,
-    nome: ci.produtos?.nome || "?",
-    qtd: ci.quantidade
-  }));
-  window._mesaComboCustom = { comboId: c.id, nome: c.nome, preco: parseFloat(c.preco) || 0, itens, mode: { type: "add", idx: null }, mesaItemId: null, originalPayload: null };
-  document.getElementById("mesa-combo-custom-titulo").textContent = "Personalizar Combo (Mesa)";
-  document.getElementById("mesa-combo-custom-nome").textContent = mesaAtual?.numero ? `${mesaAtual.numero}` : "Mesa";
-  document.getElementById("mesa-combo-custom-nome").nextElementSibling.textContent = `Combo: ${c.nome} (personalizado)`;
-  document.getElementById("mesa-combo-custom-preco").textContent = "R$ " + (window._mesaComboCustom.preco).toFixed(2).replace(".", ",");
-  document.getElementById("mesa-combo-busca-produto").value = "";
-  document.getElementById("mesa-combo-busca-resultado").innerHTML = "";
-  renderMesaComboCustomItens();
-  document.getElementById("mesa-combo-custom-modal").classList.add("open");
-  setTimeout(() => document.getElementById("mesa-combo-busca-produto").focus(), 80);
-}
-
-function abrirMesaComboCustomEditar(mesaItemId) {
-  if (!mesaAtual) return;
-  const itemMesa = mesaAtual.mesa_itens.find(i => i.id === mesaItemId);
-  if (!itemMesa) return;
-  const meta = parseMesaItemComboMeta(itemMesa.nome);
-  if (!meta?.comboId) { toast("Este item não é um combo.", "error"); return; }
-  const c = combos.find(x => x.id === meta.comboId);
-  if (!c) { toast("Combo não encontrado (cadastro).", "error"); return; }
-  const basePayload = Array.isArray(meta.customItens) && meta.customItens.length
-    ? meta.customItens
-    : (c.combo_itens || []).map(ci => ({ produto_id: ci.produto_id, quantidade: ci.quantidade }));
-  const itens = basePayload.map(ci => ({
-    produto_id: ci.produto_id,
-    nome: (estoque.find(p => p.id === ci.produto_id)?.nome) || (c.combo_itens?.find(x => x.produto_id === ci.produto_id)?.produtos?.nome) || "?",
-    qtd: ci.quantidade
-  }));
-  window._mesaComboCustom = {
-    comboId: c.id,
-    nome: c.nome,
-    preco: parseFloat(itemMesa.preco) || (parseFloat(c.preco) || 0),
-    itens,
-    mode: { type: "add", idx: null },
-    mesaItemId,
-    originalPayload: basePayload
-  };
-  document.getElementById("mesa-combo-custom-titulo").textContent = "Editar Combo na Mesa";
-  document.getElementById("mesa-combo-custom-nome").textContent = mesaAtual?.numero ? `${mesaAtual.numero}` : "Mesa";
-  document.getElementById("mesa-combo-custom-nome").nextElementSibling.textContent = `Combo: ${mesaItemNomeExibicao(itemMesa.nome)}`;
-  document.getElementById("mesa-combo-custom-preco").textContent = "R$ " + (window._mesaComboCustom.preco).toFixed(2).replace(".", ",");
-  document.getElementById("mesa-combo-busca-produto").value = "";
-  document.getElementById("mesa-combo-busca-resultado").innerHTML = "";
-  renderMesaComboCustomItens();
-  document.getElementById("mesa-combo-custom-modal").classList.add("open");
-  setTimeout(() => document.getElementById("mesa-combo-busca-produto").focus(), 80);
-}
-function fecharMesaComboCustom() {
-  document.getElementById("mesa-combo-custom-modal").classList.remove("open");
-  window._mesaComboCustom = null;
-}
-function mesaComboCustomModoAdicionar() {
-  if (!window._mesaComboCustom) return;
-  window._mesaComboCustom.mode = { type: "add", idx: null };
-  toast("Selecione um produto na busca para adicionar.", "ok");
-  document.getElementById("mesa-combo-busca-produto").focus();
-}
-function mesaComboCustomModoTrocar(idx) {
-  if (!window._mesaComboCustom) return;
-  window._mesaComboCustom.mode = { type: "replace", idx };
-  toast("Selecione um produto na busca para trocar este item.", "ok");
-  document.getElementById("mesa-combo-busca-produto").focus();
-}
-function renderMesaComboCustomItens() {
-  const el = document.getElementById("mesa-combo-custom-itens");
-  const st = window._mesaComboCustom;
-  if (!el || !st) return;
-  if (!st.itens.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nenhum item. Use “Adicionar item”.</div>';
-    return;
-  }
-  el.innerHTML = st.itens.map((it, i) => `
-    <div class="carrinho-item" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
-      <div style="flex:1;min-width:0">
-        <div class="carrinho-nome">${it.nome}</div>
-        <div class="carrinho-preco" style="font-size:11px">Qtd no combo: <b>${it.qtd}</b></div>
-      </div>
-      <div class="carrinho-qtd-ctrl" title="Quantidade deste item dentro do combo">
-        <button type="button" class="carrinho-qtd-btn" onclick="mesaComboCustomQtd(${i},-1)">−</button>
-        <div class="carrinho-qtd-num">${it.qtd}</div>
-        <button type="button" class="carrinho-qtd-btn" onclick="mesaComboCustomQtd(${i},1)">+</button>
-      </div>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="mesaComboCustomModoTrocar(${i})" style="padding:6px 10px">Trocar</button>
-      <button type="button" class="carrinho-remove" onclick="mesaComboCustomRemover(${i})" title="Remover item">✕</button>
-    </div>
-  `).join("");
-}
-function mesaComboCustomQtd(i, d) {
-  const st = window._mesaComboCustom;
-  if (!st || !st.itens[i]) return;
-  st.itens[i].qtd = Math.max(1, (st.itens[i].qtd || 1) + d);
-  renderMesaComboCustomItens();
-}
-function mesaComboCustomRemover(i) {
-  const st = window._mesaComboCustom;
-  if (!st) return;
-  st.itens.splice(i, 1);
-  renderMesaComboCustomItens();
-}
-function buscarProdutoMesaComboCustom() {
-  const st = window._mesaComboCustom;
-  const q = document.getElementById("mesa-combo-busca-produto")?.value?.toLowerCase() || "";
-  const res = document.getElementById("mesa-combo-busca-resultado");
-  if (!res) return;
-  if (!st || !q.trim()) { res.innerHTML = ""; return; }
-  const lista = estoque.filter(p => p.nome.toLowerCase().includes(q) || (p.codigo||"").includes(q)).slice(0, 8);
-  res.innerHTML = lista.map(p => `
-    <div onclick="selecionarProdutoMesaComboCustom('${p.id}')" style="padding:9px 12px;cursor:pointer;border-radius:6px;margin-bottom:4px;background:var(--surface2);font-size:13px;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--gold-dim,#fdf3dc)'" onmouseout="this.style.background='var(--surface2)'">
-      <span>${p.nome}</span>
-      <span style="font-weight:700;color:var(--text3)">${p.quantidade} un.</span>
-    </div>
-  `).join("") || '<div style="font-size:12px;color:var(--text3);padding:8px">Nenhum produto encontrado.</div>';
-}
-function selecionarProdutoMesaComboCustom(produtoId) {
-  const st = window._mesaComboCustom;
-  if (!st) return;
-  const p = estoque.find(x => x.id === produtoId);
-  if (!p) return;
-  if (st.mode?.type === "replace" && Number.isInteger(st.mode.idx) && st.itens[st.mode.idx]) {
-    st.itens[st.mode.idx] = { produto_id: p.id, nome: p.nome, qtd: st.itens[st.mode.idx].qtd || 1 };
-  } else {
-    const ex = st.itens.find(x => x.produto_id === p.id);
-    if (ex) ex.qtd += 1;
-    else st.itens.push({ produto_id: p.id, nome: p.nome, qtd: 1 });
-  }
-  st.mode = { type: "add", idx: null };
-  document.getElementById("mesa-combo-busca-produto").value = "";
-  document.getElementById("mesa-combo-busca-resultado").innerHTML = "";
-  renderMesaComboCustomItens();
-}
-
-async function confirmarMesaComboCustom() {
-  if (!mesaAtual) return;
-  const st = window._mesaComboCustom;
-  if (!st) return;
-  if (!st.itens.length) { toast("Adicione ao menos 1 item.", "error"); return; }
-  const newPayload = st.itens.map(it => ({ produto_id: it.produto_id, quantidade: it.qtd || 1 }));
-
-  // EDITAR item existente na mesa
-  if (st.mesaItemId) {
-    const itemMesa = mesaAtual.mesa_itens.find(i => i.id === st.mesaItemId);
-    if (!itemMesa) { toast("Item não encontrado.", "error"); return; }
-    const oldPayload = Array.isArray(st.originalPayload) && st.originalPayload.length ? st.originalPayload : [];
-    const mult = itemMesa.quantidade || 1;
-    const oldMap = {};
-    const newMap = {};
-    oldPayload.forEach(ci => oldMap[ci.produto_id] = (oldMap[ci.produto_id] || 0) + (ci.quantidade || 0));
-    newPayload.forEach(ci => newMap[ci.produto_id] = (newMap[ci.produto_id] || 0) + (ci.quantidade || 0));
-
-    // Validar estoque para o delta positivo
-    for (const pid of unionKeys(oldMap, newMap)) {
-      const delta = ((newMap[pid] || 0) - (oldMap[pid] || 0)) * mult;
-      if (delta > 0) {
-        const p = estoque.find(x => x.id === pid);
-        if (!p || p.quantidade < delta) {
-          toast(`Estoque insuficiente: ${p?.nome || "produto"}`, "error");
-          return;
-        }
-      }
-    }
-
-    // Aplicar estoque delta
-    for (const pid of unionKeys(oldMap, newMap)) {
-      const delta = ((newMap[pid] || 0) - (oldMap[pid] || 0)) * mult;
-      if (delta === 0) continue;
-      const p = estoque.find(x => x.id === pid);
-      if (p) {
-        p.quantidade = Math.max(0, p.quantidade - delta);
-        await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
-      }
-    }
-
-    const b64 = b64EncodeJson(newPayload);
-    const nomeRow = `🎁 ${st.nome} (personalizado) [[combo:${st.comboId};custom:${b64}]]`;
-    const first = newPayload[0];
-    const { error } = await db.from("mesa_itens").update({
-      produto_id: first?.produto_id || itemMesa.produto_id,
-      nome: nomeRow,
-      preco: st.preco
-    }).eq("id", st.mesaItemId);
-    if (error) { toast("Erro ao salvar edição.", "error"); console.error(error); return; }
-    itemMesa.nome = nomeRow;
-    itemMesa.preco = st.preco;
-    if (first?.produto_id) itemMesa.produto_id = first.produto_id;
-    fecharMesaComboCustom();
-    renderItensMesa();
-    renderPDVGrid();
-    toast("✅ Combo atualizado na mesa!", "ok");
-    return;
-  }
-
-  // ADICIONAR novo (1 combo)
-  for (const it of newPayload) {
-    const p = estoque.find(x => x.id === it.produto_id);
-    const req = it.quantidade || 1;
-    if (!p || p.quantidade < req) { toast(`Estoque insuficiente: ${p?.nome || "produto"}`, "error"); return; }
-  }
-  const b64 = b64EncodeJson(newPayload);
-  const nomeRow = `🎁 ${st.nome} (personalizado) [[combo:${st.comboId};custom:${b64}]]`;
-  const first = newPayload[0];
-  for (const it of newPayload) {
-    const p = estoque.find(x => x.id === it.produto_id);
-    if (p) {
-      p.quantidade = Math.max(0, p.quantidade - it.quantidade);
-      await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
-    }
-  }
-  const { data, error } = await db.from("mesa_itens").insert([{
-    mesa_id: mesaAtual.id,
-    produto_id: first.produto_id,
-    nome: nomeRow,
-    preco: st.preco,
-    quantidade: 1
-  }]).select().single();
-  if (error) { toast("Erro ao adicionar combo.", "error"); console.error(error); return; }
-  mesaAtual.mesa_itens.push(data);
-  fecharMesaComboCustom();
-  renderItensMesa();
-  renderPDVGrid();
-  toast("🎁 Combo personalizado adicionado!", "ok");
-}
-
-function unionKeys(a, b) {
-  const s = new Set();
-  Object.keys(a || {}).forEach(k => s.add(k));
-  Object.keys(b || {}).forEach(k => s.add(k));
-  return s;
 }
 
 async function adicionarComboNaMesa(comboId) {
@@ -4633,7 +4321,6 @@ function renderItensMesa() {
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <span style="font-size:13px;font-weight:700;color:var(--green)">R$ ${(parseFloat(i.preco)*i.quantidade).toFixed(2).replace(".",",")}</span>
-        ${isComboMesa ? `<button type="button" class="btn btn-secondary btn-sm" onclick="abrirMesaComboCustomEditar('${i.id}')" style="padding:6px 10px">✏️ Editar</button>` : ""}
         <button type="button" onclick="removerItemMesa('${i.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px" title="Remover item">✕</button>
       </div>
     </div>`;
@@ -4681,26 +4368,22 @@ async function ajustarQtdItemMesa(itemId, delta) {
   if (!mesaAtual || !delta) return;
   const item = mesaAtual.mesa_itens.find(i => i.id === itemId);
   if (!item) return;
-  const meta = parseMesaItemComboMeta(item.nome);
-  const comboId = meta?.comboId || null;
+  const comboId = parseMesaItemComboId(item.nome);
   if (comboId) {
     const c = combos.find(x => x.id === comboId);
     if (!c) { toast("Combo não encontrado (cadastro). Ajuste indisponível.", "error"); return; }
-    const baseItens = Array.isArray(meta?.customItens) && meta.customItens.length
-      ? meta.customItens
-      : (c.combo_itens || []).map(ci => ({ produto_id: ci.produto_id, quantidade: ci.quantidade }));
     if (delta > 0) {
-      for (const ci of baseItens) {
+      for (const ci of (c.combo_itens || [])) {
         const p = estoque.find(x => x.id === ci.produto_id);
-        if (p && p.quantidade < (ci.quantidade * delta)) {
+        if (p && p.quantidade < ci.quantidade * delta) {
           if (!confirm(`Estoque baixo (${p.nome}: ${p.quantidade} un.). Adicionar mais ${delta} combo(s) mesmo assim?`)) return;
           break;
         }
       }
-      for (const ci of baseItens) {
+      for (const ci of (c.combo_itens || [])) {
         const p = estoque.find(x => x.id === ci.produto_id);
         if (p) {
-          p.quantidade = Math.max(0, p.quantidade - (ci.quantidade * delta));
+          p.quantidade = Math.max(0, p.quantidade - ci.quantidade * delta);
           await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
         }
       }
@@ -4710,10 +4393,10 @@ async function ajustarQtdItemMesa(itemId, delta) {
     } else {
       const reduz = Math.min(item.quantidade, -delta);
       if (reduz <= 0) return;
-      for (const ci of baseItens) {
+      for (const ci of (c.combo_itens || [])) {
         const p = estoque.find(x => x.id === ci.produto_id);
         if (p) {
-          p.quantidade += (ci.quantidade * reduz);
+          p.quantidade += ci.quantidade * reduz;
           await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
         }
       }
@@ -4766,18 +4449,14 @@ async function removerItemMesa(itemId) {
   if (!mesaAtual) return;
   const item = mesaAtual.mesa_itens.find(i => i.id === itemId);
   if (!item) return;
-  const meta = parseMesaItemComboMeta(item.nome);
-  const comboId = meta?.comboId || null;
+  const comboId = parseMesaItemComboId(item.nome);
   if (comboId) {
     const c = combos.find(x => x.id === comboId);
     if (c) {
-      const baseItens = Array.isArray(meta?.customItens) && meta.customItens.length
-        ? meta.customItens
-        : (c.combo_itens || []).map(ci => ({ produto_id: ci.produto_id, quantidade: ci.quantidade }));
-      for (const ci of baseItens) {
+      for (const ci of (c.combo_itens || [])) {
         const p = estoque.find(x => x.id === ci.produto_id);
         if (p) {
-          p.quantidade += (ci.quantidade * item.quantidade);
+          p.quantidade += ci.quantidade * item.quantidade;
           await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
         }
       }
@@ -4804,27 +4483,22 @@ async function fecharMesaConfirmar() {
 
   // Jogar todos os itens no carrinho do PDV
   itens.forEach(item => {
-    const meta = parseMesaItemComboMeta(item.nome);
-    const comboId = meta?.comboId || null;
+    const comboId = parseMesaItemComboId(item.nome);
     if (comboId) {
       const c = combos.find(x => x.id === comboId);
       if (c) {
-        const baseItens = Array.isArray(meta?.customItens) && meta.customItens.length
-          ? meta.customItens
-          : (c.combo_itens || []).map(ci => ({ produto_id: ci.produto_id, quantidade: ci.quantidade }));
         const cod = "combo-" + comboId;
         const existeCombo = carrinho.find(x => x.codigo === cod);
-        if (existeCombo) { existeCombo.qtd += item.quantidade; existeCombo.estoqueJaRetirado = true; }
+        if (existeCombo) existeCombo.qtd += item.quantidade;
         else {
           carrinho.push({
             codigo: cod,
-            nome: mesaItemNomeExibicao(item.nome) || c.nome,
+            nome: c.nome,
             preco: parseFloat(c.preco),
             qtd: item.quantidade,
             isCombo: true,
             comboId,
-            comboItens: baseItens,
-            estoqueJaRetirado: true
+            comboItens: c.combo_itens
           });
         }
         return;
@@ -4835,14 +4509,12 @@ async function fecharMesaConfirmar() {
     const existe = carrinho.find(x => !x.isCombo && x.codigo === codigoCarrinho);
     if (existe) {
       existe.qtd += item.quantidade;
-      existe.estoqueJaRetirado = true;
     } else {
       carrinho.push({
         codigo: codigoCarrinho,
-        nome: mesaItemNomeExibicao(item.nome),
+        nome: item.nome,
         preco: parseFloat(item.preco),
-        qtd: item.quantidade,
-        estoqueJaRetirado: true
+        qtd: item.quantidade
       });
     }
   });
