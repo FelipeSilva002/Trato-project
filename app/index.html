@@ -611,10 +611,7 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
       Produtos
     </div>
-    <div class="nav-item" id="nav-movimentacoes" onclick="nav('movimentacoes')">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      Movimentações
-    </div>
+
     <div class="nav-item" id="nav-dashboard" onclick="nav('dashboard')">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       Dashboard
@@ -905,34 +902,7 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       <div id="mesas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px"></div>
     </div>
 
-    <!-- ══ MOVIMENTAÇÕES ══ -->
-    <div class="page-view" id="view-movimentacoes">
-      <div class="page-header">
-        <div><div class="page-title">Movimentações</div><div class="page-subtitle">Histórico completo de entradas e saídas</div></div>
-      </div>
-      <!-- RESUMO DO DIA -->
-      <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:20px">
-        <div class="rel-card">
-          <div class="rel-card-label">Saídas do dia</div>
-          <div class="rel-card-value" id="mov-total" style="color:var(--green)">0</div>
-          <div class="rel-card-sub">unidades vendidas hoje</div>
-        </div>
 
-
-      </div>
-      <!-- FILTROS DE TIPO -->
-      <div class="hist-filtros">
-        <button class="hist-filtro-btn active" onclick="filtrarHist('todos',this)">Todos</button>
-        <button class="hist-filtro-btn" onclick="filtrarHist('entrada',this)">Entradas</button>
-        <button class="hist-filtro-btn" onclick="filtrarHist('saida',this)">Saídas</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Data / Hora</th><th>Produto</th><th>Código</th><th>Tipo</th><th style="text-align:center">Qtd.</th><th>Observação</th></tr></thead>
-          <tbody id="hist-body"></tbody>
-        </table>
-      </div>
-    </div>
 
     <!-- ══ CAIXA ══ -->
     <div class="page-view" id="view-caixa">
@@ -2101,8 +2071,8 @@ function labelStatus(s){return s==="ok"?"Em estoque":s==="baixo"?"Estoque baixo"
 function topVendidos(){const map={};historico.filter(h=>h.tipo==="saida").forEach(h=>{map[h.produto]=(map[h.produto]||0)+h.qtd;});return Object.entries(map).sort((a,b)=>b[1]-a[1]);}
 function topVendidosPeriodo(lista){const map={};lista.filter(h=>h.tipo==="saida").forEach(h=>{map[h.produto]=(map[h.produto]||0)+h.qtd;});return Object.entries(map).sort((a,b)=>b[1]-a[1]);}
 
-const LABELS={"dashboard":"Dashboard","produtos":"Produtos","venda":"PDV / Venda","movimentacoes":"Movimentações","relatorio":"Relatório Diário","fiado":"Fiado / Contas","combos":"Combos","mesas":"Mesas","caixa":"Caixa","configuracoes":"Configurações"};
-const ABAS=["venda","combos","mesas","fiado","produtos","movimentacoes","dashboard","relatorio","caixa","configuracoes"];
+const LABELS={"dashboard":"Dashboard","produtos":"Produtos","venda":"PDV / Venda","relatorio":"Relatório Diário","fiado":"Fiado / Contas","combos":"Combos","mesas":"Mesas","caixa":"Caixa","configuracoes":"Configurações"};
+const ABAS=["venda","combos","mesas","fiado","produtos","dashboard","relatorio","caixa","configuracoes"];
 
 function nav(aba){
   document.querySelectorAll(".page-view").forEach(v=>v.classList.remove("active"));
@@ -2115,7 +2085,6 @@ function nav(aba){
   document.getElementById("breadcrumb").textContent=LABELS[aba]||aba;
   if(aba==="produtos")renderProdutos();
   if(aba==="venda"){ renderVenda(); setTimeout(()=>{ const el=document.getElementById("pdv-bip-global"); if(el) el.focus(); },150); }
-  if(aba==="movimentacoes")renderMovimentacoes();
   if(aba==="relatorio")renderRelatorio();
   if(aba==="caixa"){ renderCaixa(); return; }
   if(aba==="configuracoes"){ renderConfiguracoes(); return; }
@@ -2687,28 +2656,7 @@ function renderProdutos(){
   filtrarProdutos();
 }
 
-function renderMovimentacoes(){
-  // Resumo do dia
-  const totalMov   = historico.length;
-  const totalEntr  = historico.filter(h=>h.tipo==="entrada").reduce((a,b)=>a+b.qtd,0);
-  const totalSaid  = historico.filter(h=>h.tipo==="saida").reduce((a,b)=>a+b.qtd,0);
-  document.getElementById("mov-total").textContent = totalSaid;
 
-  // Tabela completa com código
-  const lista=filtroHist==="todos"?historico:historico.filter(h=>h.tipo===filtroHist);
-  document.getElementById("hist-body").innerHTML=lista.length===0
-    ?`<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3)">Nenhuma movimentação registrada.</td></tr>`
-    :lista.slice().reverse().map(h=>`<tr>
-        <td><div style="font-weight:600">${h.hora}</div><div style="font-size:11px;color:var(--text3)">${h.data}</div></td>
-        <td><div class="td-nome">${h.produto}</div></td>
-        <td><div class="td-mono">${h.codigo}</div></td>
-        <td><span class="badge badge-${h.tipo}">${h.tipo==="entrada"?"↑ Entrada":"↓ Saída"}</span></td>
-        <td style="text-align:center;font-weight:700;font-size:15px">${h.qtd}</td>
-        <td style="color:var(--text3);font-size:12px">${h.obs||"—"}</td>
-      </tr>`).join("");
-}
-
-function filtrarHist(tipo,btn){filtroHist=tipo;document.querySelectorAll(".hist-filtro-btn").forEach(b=>b.classList.remove("active"));btn.classList.add("active");renderMovimentacoes();}
 
 function filtrarPeriodo(periodo,btn){
   filtroPeriodo=periodo;
@@ -2725,7 +2673,6 @@ function filtrarPeriodo(periodo,btn){
     document.getElementById("data-fim").value=hoje.toISOString().split("T")[0];
   } else {
     custom.classList.remove("show");
-    renderMovimentacoes();
   }
 }
 
@@ -3588,7 +3535,6 @@ const ABAS_CONFIG = [
   { key: "combos",       label: "Combos" },
   { key: "fiado",        label: "Fiado / Contas" },
   { key: "produtos",     label: "Produtos" },
-  { key: "movimentacoes",label: "Movimentações" },
   { key: "dashboard",    label: "Dashboard" },
   { key: "caixa",        label: "Caixa" },
   { key: "relatorio",    label: "Relatório" },
