@@ -4821,33 +4821,81 @@ function fecharPedidoMesa() {
   carregarMesas();
 }
 
+function _mesaItemHTML(i) {
+  const isComboMesa = !!parseMesaItemComboId(i.nome);
+  const nomeExib = mesaItemNomeExibicao(i.nome);
+  return `
+  <div data-mesa-item-row="${i.id}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+    <div style="flex:1;min-width:120px">
+      <div style="font-size:13px;font-weight:600">${nomeExib}</div>
+      <div style="font-size:11px;color:var(--text3)">${isComboMesa ? "Kit combo · " : ""}R$ ${parseFloat(i.preco).toFixed(2).replace(".",",")} / un.</div>
+    </div>
+    <div class="carrinho-qtd-ctrl" style="flex-shrink:0">
+      <button type="button" class="carrinho-qtd-btn" onclick="ajustarQtdItemMesa('${i.id}',-1)">−</button>
+      <div class="carrinho-qtd-num" data-mesa-item-num="${i.id}">${i.quantidade}</div>
+      <button type="button" class="carrinho-qtd-btn" onclick="ajustarQtdItemMesa('${i.id}',1)">+</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <span data-mesa-item-total="${i.id}" style="font-size:13px;font-weight:700;color:var(--green)">R$ ${(parseFloat(i.preco)*i.quantidade).toFixed(2).replace(".",",")}</span>
+      ${isComboMesa ? `<button type="button" class="btn btn-secondary btn-sm" onclick="abrirMesaComboCustomEditar('${i.id}')" style="padding:6px 10px">✏️ Editar</button>` : ""}
+      <button type="button" onclick="removerItemMesa('${i.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px" title="Remover item">✕</button>
+    </div>
+  </div>`;
+}
+
+function _mesaAtualizarTotal() {
+  const itens = mesaAtual?.mesa_itens || [];
+  const total = itens.reduce((a, i) => a + parseFloat(i.preco) * i.quantidade, 0);
+  const el = document.getElementById("mesa-total");
+  if (el) el.textContent = "R$ " + total.toFixed(2).replace(".", ",");
+}
+
 function renderItensMesa() {
   const itens = mesaAtual?.mesa_itens || [];
   const lista = document.getElementById("mesa-itens-lista");
-  const total = itens.reduce((a,i) => a + parseFloat(i.preco) * i.quantidade, 0);
-  document.getElementById("mesa-total").textContent = "R$ " + total.toFixed(2).replace(".",",");
-  if (!itens.length) { lista.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nenhum item ainda.</div>'; return; }
-  lista.innerHTML = itens.map(i => {
-    const isComboMesa = !!parseMesaItemComboId(i.nome);
-    const nomeExib = mesaItemNomeExibicao(i.nome);
-    return `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
-      <div style="flex:1;min-width:120px">
-        <div style="font-size:13px;font-weight:600">${nomeExib}</div>
-        <div style="font-size:11px;color:var(--text3)">${isComboMesa ? "Kit combo · " : ""}R$ ${parseFloat(i.preco).toFixed(2).replace(".",",")} / un.</div>
-      </div>
-      <div class="carrinho-qtd-ctrl" style="flex-shrink:0">
-        <button type="button" class="carrinho-qtd-btn" onclick="ajustarQtdItemMesa('${i.id}',-1)">−</button>
-        <div class="carrinho-qtd-num">${i.quantidade}</div>
-        <button type="button" class="carrinho-qtd-btn" onclick="ajustarQtdItemMesa('${i.id}',1)">+</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <span style="font-size:13px;font-weight:700;color:var(--green)">R$ ${(parseFloat(i.preco)*i.quantidade).toFixed(2).replace(".",",")}</span>
-        ${isComboMesa ? `<button type="button" class="btn btn-secondary btn-sm" onclick="abrirMesaComboCustomEditar('${i.id}')" style="padding:6px 10px">✏️ Editar</button>` : ""}
-        <button type="button" onclick="removerItemMesa('${i.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px" title="Remover item">✕</button>
-      </div>
-    </div>`;
-  }).join("");
+  if (!lista) return;
+
+  // Cancela timers pendentes de itens que não existem mais
+  const idsAtivos = new Set(itens.map(i => String(i.id)));
+  for (const id of Object.keys(_mesaQtdPendente)) {
+    if (!idsAtivos.has(id)) {
+      clearTimeout(_mesaQtdPendente[id]?.timer);
+      delete _mesaQtdPendente[id];
+    }
+  }
+
+  _mesaAtualizarTotal();
+
+  if (!itens.length) {
+    lista.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nenhum item ainda.</div>';
+    return;
+  }
+
+  // Patch cirúrgico: adiciona itens novos, remove os excluídos, atualiza os existentes
+  const idsNoDOM = new Set();
+  lista.querySelectorAll("[data-mesa-item-row]").forEach(el => {
+    const id = el.getAttribute("data-mesa-item-row");
+    if (!idsAtivos.has(id)) {
+      el.remove(); // foi removido do array
+    } else {
+      idsNoDOM.add(id);
+    }
+  });
+
+  // Adiciona itens que ainda não estão no DOM e atualiza quantidades dos existentes
+  itens.forEach(i => {
+    const id = String(i.id);
+    if (!idsNoDOM.has(id)) {
+      // Novo item: insere no final
+      lista.insertAdjacentHTML("beforeend", _mesaItemHTML(i));
+    } else {
+      // Já existe: só atualiza número e total (não recria)
+      const numEl = lista.querySelector(`[data-mesa-item-num="${id}"]`);
+      const totalEl = lista.querySelector(`[data-mesa-item-total="${id}"]`);
+      if (numEl) numEl.textContent = i.quantidade;
+      if (totalEl) totalEl.textContent = "R$ " + (parseFloat(i.preco) * i.quantidade).toFixed(2).replace(".", ",");
+    }
+  });
 }
 
 let _mesaBuscaTimer = null;
@@ -4941,7 +4989,17 @@ async function adicionarItemMesa(produtoId, nome, preco) {
       if (error) throw error;
 
       const idx = mesaAtual.mesa_itens.findIndex(i => i.id === tempId);
-      if (idx >= 0) mesaAtual.mesa_itens[idx] = data;
+      if (idx >= 0) {
+        mesaAtual.mesa_itens[idx] = data;
+        // Re-renderiza só a linha nova para trocar o tempId pelo ID real no DOM
+        const lista = document.getElementById("mesa-itens-lista");
+        const rowEl = lista?.querySelector(`[data-mesa-item-row="${tempId}"]`);
+        if (rowEl) {
+          rowEl.outerHTML = _mesaItemHTML(data);
+        } else {
+          renderItensMesa();
+        }
+      }
     }
 
     if (p) {
@@ -4963,10 +5021,10 @@ async function adicionarItemMesa(produtoId, nome, preco) {
   }
 }
 
-// ── AJUSTE DE QUANTIDADE DA MESA (debounce) ──────────────────────────────────
-// Acumula cliques localmente e dispara UMA só requisição ao banco após 600ms de inatividade.
-// Isso elimina a race condition e reduz drasticamente as chamadas ao Supabase.
-const _mesaQtdPendente = {}; // { [itemId]: { timer, delta } }
+// ── AJUSTE DE QUANTIDADE DA MESA (debounce + patch cirúrgico de UI) ──────────
+// Atualiza apenas o número na tela sem recriar o HTML — evita perda de estado dos botões.
+// Acumula deltas e dispara UMA requisição ao banco 600ms após o último clique.
+const _mesaQtdPendente = {}; // { [itemId]: { timer, qtdBase, delta } }
 
 function ajustarQtdItemMesa(itemId, delta) {
   if (!mesaAtual || !delta) return;
@@ -4975,57 +5033,65 @@ function ajustarQtdItemMesa(itemId, delta) {
   const item = mesaAtual.mesa_itens.find(i => String(i.id) === itemIdStr);
   if (!item) return;
 
-  // Acumula o delta na memória e atualiza a UI imediatamente
+  const novaQtd = item.quantidade + delta;
+  if (novaQtd < 0) return;
+
+  item.quantidade = novaQtd;
+
+  // Patch cirúrgico: atualiza só os elementos deste item
+  const numEl = document.querySelector(`[data-mesa-item-num="${itemIdStr}"]`);
+  const totalEl = document.querySelector(`[data-mesa-item-total="${itemIdStr}"]`);
+  if (numEl) numEl.textContent = novaQtd;
+  if (totalEl) totalEl.textContent = "R$ " + (parseFloat(item.preco) * novaQtd).toFixed(2).replace(".", ",");
+
+  if (novaQtd <= 0) {
+    mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => String(i.id) !== itemIdStr);
+    document.querySelector(`[data-mesa-item-row="${itemIdStr}"]`)?.remove();
+    // Cancela flush pendente — item removido localmente, banco é tratado pelo removerItemMesa se necessário
+    if (_mesaQtdPendente[itemIdStr]) {
+      clearTimeout(_mesaQtdPendente[itemIdStr].timer);
+      delete _mesaQtdPendente[itemIdStr];
+    }
+    // Remove direto do banco (qtd chegou a zero pelo botão −)
+    db.from("mesa_itens").delete().eq("id", itemIdStr).then(({ error }) => {
+      if (error) console.error("Erro ao remover item (qtd=0):", error);
+    });
+    _mesaAtualizarTotal();
+    return;
+  }
+
+  _mesaAtualizarTotal();
+
+  // Acumula delta e agenda flush debounced
   if (!_mesaQtdPendente[itemIdStr]) {
     _mesaQtdPendente[itemIdStr] = { timer: null, delta: 0 };
   }
   const pendente = _mesaQtdPendente[itemIdStr];
-
-  // Calcula nova quantidade pretendida
-  const novaQtd = item.quantidade + delta;
-  if (novaQtd < 0) return; // não deixa negativo
-
-  // Atualiza UI na hora
-  if (novaQtd <= 0) {
-    mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => String(i.id) !== itemIdStr);
-  } else {
-    item.quantidade = novaQtd;
-  }
   pendente.delta += delta;
-  renderItensMesa();
-  if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
-
-  // Cancela o timer anterior e agenda novo flush
   clearTimeout(pendente.timer);
   pendente.timer = setTimeout(() => _flushQtdItemMesa(itemIdStr), 600);
 }
 
 async function _flushQtdItemMesa(itemIdStr) {
   const pendente = _mesaQtdPendente[itemIdStr];
-  if (!pendente || pendente.delta === 0) { delete _mesaQtdPendente[itemIdStr]; return; }
-  if (!mesaAtual) { delete _mesaQtdPendente[itemIdStr]; return; }
-
+  if (!pendente) return;
   const deltaTotal = pendente.delta;
-  delete _mesaQtdPendente[itemIdStr]; // limpa antes do await
+  delete _mesaQtdPendente[itemIdStr];
 
-  // Item pode ter sido removido da lista (qtd chegou a 0)
+  if (!mesaAtual) return;
+
   const item = mesaAtual.mesa_itens.find(i => String(i.id) === itemIdStr);
-  const itemRemovidoLocal = !item; // foi removido otimisticamente
+  const removido = !item;
 
   try {
-    // Atualiza estoque se produto vinculado
-    const produtoId = item?.produto_id ?? null;
-    if (produtoId && deltaTotal !== 0) {
-      const p = estoque.find(x => x.id === produtoId);
+    if (!removido && item.produto_id && deltaTotal !== 0) {
+      const p = estoque.find(x => x.id === item.produto_id);
       if (p) {
-        // deltaTotal positivo = adicionou mais na mesa = consome estoque
         p.quantidade = Math.max(0, p.quantidade - deltaTotal);
-        await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", produtoId);
+        await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", item.produto_id);
       }
     }
-
-    if (itemRemovidoLocal) {
-      // Quantidade chegou a zero: remove do banco
+    if (removido) {
       await db.from("mesa_itens").delete().eq("id", itemIdStr);
     } else {
       const { error } = await db.from("mesa_itens").update({ quantidade: item.quantidade }).eq("id", itemIdStr);
@@ -5047,9 +5113,15 @@ async function removerItemMesa(itemId) {
   const itensAntes = [...mesaAtual.mesa_itens];
   const estoqueAntes = {};
 
-  // Remove da UI imediatamente para não depender da latência do banco.
+  // Remove da UI imediatamente (patch cirúrgico — não recria os outros botões)
   mesaAtual.mesa_itens = mesaAtual.mesa_itens.filter(i => String(i.id) !== itemIdStr);
-  renderItensMesa();
+  // Cancela qualquer flush pendente deste item
+  if (_mesaQtdPendente[itemIdStr]) {
+    clearTimeout(_mesaQtdPendente[itemIdStr].timer);
+    delete _mesaQtdPendente[itemIdStr];
+  }
+  document.querySelector(`[data-mesa-item-row="${itemIdStr}"]`)?.remove();
+  _mesaAtualizarTotal();
   if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
 
   try {
@@ -5090,6 +5162,7 @@ async function removerItemMesa(itemId) {
       const p = estoque.find(x => x.id === pid);
       if (p) p.quantidade = qtd;
     });
+    // Rollback: re-renderiza tudo pois precisamos reinserir o item removido
     renderItensMesa();
     if (document.getElementById("view-venda")?.classList.contains("active")) renderPDVGrid();
     toast("Erro ao remover item da mesa.", "error");
