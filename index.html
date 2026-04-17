@@ -126,6 +126,9 @@ body::after {
       padding: 5px 14px;
       border-radius: 100px;
       white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
     }
 
     /* ── HERO ── */
@@ -1336,20 +1339,8 @@ body::after {
       .hero h1 { font-size: clamp(32px, 6vw, 48px); }
       .hero-ctas { justify-content: center; flex-wrap: wrap; }
       .hero-badge { margin: 0 auto; }
-      .hero-topbar {
-        position: static;
-        display: flex;
-        justify-content: center;
-        margin-bottom: 20px;
-      }
-      .hero-topbar-inner {
-        font-size: 11px;
-        padding: 6px 12px;
-        max-width: 88vw;
-        text-align: center;
-        white-space: normal;
-        word-break: break-word;
-      }
+      .hero-topbar { top: 60px; }
+      .hero-topbar-inner { font-size: 12px; padding: 7px 14px; max-width: 90vw; text-align: center; }
 
       .features-grid { grid-template-columns: 1fr 1fr; }
       .segmentos-grid { grid-template-columns: 1fr 1fr; }
@@ -1663,7 +1654,6 @@ body::after {
   grid-column: 1 / -1;
 }
 .top-bar {
-  display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -1714,7 +1704,7 @@ body::after {
     <!-- Faixa topo -->
     <div class="hero-topbar">
       <div class="hero-topbar-inner">
-        <span class="hero-topbar-pill">⭐</span>
+        <span style="width:8px;height:8px;min-width:8px;display:inline-block;border-radius:50%;background:#22c55e;animation:pulse 1.5s infinite;flex-shrink:0;"></span>
         <span>Mais de <strong>200 empresas</strong> já utilizam a Trato</span>
         <span class="hero-topbar-arrow">→</span>
       </div>
