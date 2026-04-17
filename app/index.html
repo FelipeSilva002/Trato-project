@@ -314,6 +314,15 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
 .rel-card-sub   { font-size:11px; color:var(--text3); margin-top:4px; }
 
 .top-item { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); }
+.venda-row { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); }
+.venda-row:last-child { border-bottom:none; }
+.venda-dt { display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:52px; background:var(--blue-dim); border-radius:8px; padding:6px 8px; }
+.venda-dt-data { font-size:10px; font-weight:600; color:var(--blue); }
+.venda-dt-hora { font-size:12px; font-weight:800; color:var(--blue); font-variant-numeric:tabular-nums; }
+.venda-info { flex:1; min-width:0; }
+.venda-nome { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.venda-sub  { font-size:11px; color:var(--text3); margin-top:1px; }
+.venda-val  { font-size:14px; font-weight:800; color:var(--green); white-space:nowrap; }
 .top-item:last-child { border-bottom:none; }
 .top-rank { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0; }
 .top-rank.r1 { background:var(--gold); color:#fff; }
@@ -1119,6 +1128,13 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       <div class="card mb16">
         <div class="card-header"><div class="card-title">🏆 Mais Vendidos</div><div class="card-meta">por saídas registradas</div></div>
         <div id="relatorio-top"></div>
+      </div>
+      <div class="card mb16">
+        <div class="card-header">
+          <div class="card-title">📋 Vendas do Período</div>
+          <div class="card-meta" id="rel-vendas-count">—</div>
+        </div>
+        <div id="rel-vendas-lista"></div>
       </div>
       <div class="card">
         <div class="card-header"><div class="card-title">⚠️ Produtos para Repor</div></div>
@@ -1976,6 +1992,7 @@ async function entrarNoApp(user) {
   aplicarPermissoes(usuario);
 
   await carregarEstoque();
+  await carregarHistorico();
   renderDashboard();
   renderPDVGrid();
 }
@@ -1997,6 +2014,42 @@ async function carregarEstoque() {
   }
 }
 
+async function carregarHistorico() {
+  const limite = new Date();
+  limite.setDate(limite.getDate() - 90);
+
+  const { data: vendas, error } = await db
+    .from('vendas')
+    .select('*')
+    .eq('cliente_id', _clienteId)
+    .gte('criado_em', limite.toISOString())
+    .order('criado_em', { ascending: true });
+
+  if (error) { console.error('Erro ao carregar historico:', error); return; }
+
+  historico = (vendas || []).map((v, i) => {
+    const dt = new Date(v.criado_em);
+    // Formato fixo DD/MM/YYYY para garantir compatibilidade entre navegadores
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const yyyy = dt.getFullYear();
+    const data = dd + '/' + mm + '/' + yyyy;
+    const hora = String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0');
+    const pgtoLabel = v.obs || v.forma_pgto || '';
+    return {
+      id:      v.id || i + 1,
+      data,
+      hora,
+      produto: v.produto || '',
+      codigo:  v.codigo  || '',
+      preco:   parseFloat(v.preco  || 0),
+      tipo:    'saida',
+      qtd:     v.qtd || 1,
+      obs:     'PDV ' + pgtoLabel + ' — R$ ' + parseFloat(v.total || 0).toFixed(2)
+    };
+  });
+}
+
 db.auth.getSession().then(({ data: { session } }) => {
   if (session) entrarNoApp(session.user);
 });
@@ -2011,6 +2064,15 @@ const CAT_CORES = { Cerveja:"#0f62fe", Vinho:"#7c3aed", Destilado:"#ea580c", Esp
 let estoque = [];
 
 let historico = [];
+
+function _dataHoje() {
+  const d = new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+function _horaAgora() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
 
 // ── SISTEMA DE LOGIN ───────────────────────────────────
 function mostrarErroLogin(msg) {
@@ -2354,8 +2416,8 @@ async function lancarUmFiadoNoBanco(id, nome, precoUnit, qtd) {
   const valor = precoUnit * qtd;
   const desc = `${nome} x${qtd}`;
   const now = new Date();
-  const data = now.toLocaleDateString("pt-BR");
-  const hora = now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const data = _dataHoje();
+  const hora = _horaAgora();
   const p = estoque.find(x => x.id === id);
   if (p && p.quantidade > 0) {
     p.quantidade = Math.max(0, p.quantidade - qtd);
@@ -2375,8 +2437,8 @@ async function lancarFiadoAvulsoNoBanco(nome, precoUnit, qtd) {
   const valor = precoUnit * qtd;
   const desc = `${nome} x${qtd}`;
   const now = new Date();
-  const data = now.toLocaleDateString("pt-BR");
-  const hora = now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const data = _dataHoje();
+  const hora = _horaAgora();
   const { data: lanc, error } = await db
     .from("fiado_lancamentos")
     .insert([{ fiado_cliente_id: clienteAtual.id, tipo:"debito", descricao:desc, valor, data, hora }])
@@ -2499,8 +2561,8 @@ async function confirmarPagamentoFiado() {
   const valor = Math.min(totalPago, saldo); // não abater mais que o saldo
   const formaLabel = f2 ? `${f1} R$${v1.toFixed(2)} + ${f2} R$${v2.toFixed(2)}` : f1;
   const now = new Date();
-  const data = now.toLocaleDateString("pt-BR");
-  const hora = now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const data = _dataHoje();
+  const hora = _horaAgora();
   const { data: lanc, error } = await db
     .from('fiado_lancamentos')
     .insert([{ fiado_cliente_id: clienteAtual.id, tipo:"credito", descricao:`Pagamento — ${formaLabel}`, valor, data, hora }])
@@ -2678,7 +2740,7 @@ function filtrarPeriodo(periodo,btn){
 
 function filtrarPorPeriodo(lista){
   const hoje=new Date();
-  const hojeStr=hoje.toLocaleDateString("pt-BR");
+  const hojeStr=String(hoje.getDate()).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0')+'/'+hoje.getFullYear();
 
   if(filtroPeriodo==="hoje"){
     return lista.filter(h=>h.data===hojeStr);
@@ -2754,6 +2816,38 @@ function renderRelatorio(){
           <div class="top-qtd">${qtd} un.</div></div>`;
       }).join("");
 
+  // Lista de vendas individuais com data, hora e forma de pagamento
+  const elVendasLista = document.getElementById('rel-vendas-lista');
+  const elVendasCount = document.getElementById('rel-vendas-count');
+  if (elVendasLista) {
+    const vendasOrdenadas = vendasPDV.slice().sort((a, b) => {
+      const toTs = h => { const [d,m,y]=h.data.split('/'); return new Date(y+'-'+m+'-'+d+'T'+(h.hora||'00:00')).getTime(); };
+      return toTs(b) - toTs(a);
+    });
+    if (elVendasCount) elVendasCount.textContent = vendasOrdenadas.length + ' venda' + (vendasOrdenadas.length !== 1 ? 's' : '');
+    elVendasLista.innerHTML = vendasOrdenadas.length === 0
+      ? '<div class="empty-state">Nenhuma venda no período.</div>'
+      : vendasOrdenadas.map(h => {
+          const valorVenda = extrairValor(h.obs);
+          const pgtoTipo = extrairPgto(h.obs);
+          const pgtoIcon = pgtoTipo === 'pix' ? '📱' : pgtoTipo === 'cartao' ? '💳' : '💵';
+          const partes = h.data.split('/');
+          const diaM = partes[0]+'/'+partes[1];
+          const pgtoLabel = h.obs ? h.obs.split('—')[0].replace('PDV','').trim() : '—';
+          return `<div class="venda-row">
+            <div class="venda-dt">
+              <div class="venda-dt-data">${diaM}</div>
+              <div class="venda-dt-hora">${h.hora||'--:--'}</div>
+            </div>
+            <div class="venda-info">
+              <div class="venda-nome">${h.produto}</div>
+              <div class="venda-sub">${pgtoIcon} ${pgtoLabel} · ${h.qtd} un.</div>
+            </div>
+            <div class="venda-val">R$ ${valorVenda.toFixed(2).replace('.',',')}</div>
+          </div>`;
+        }).join('');
+  }
+
   const ap=estoque.filter(p=>statusQtd(p.quantidade,p.minimo)!=="ok");
   document.getElementById("relatorio-alertas").innerHTML=ap.length===0?'<div class="empty-state">✅ Todos os produtos OK.</div>'
     :ap.map(p=>{const st=statusQtd(p.quantidade,p.minimo),repor=Math.max(0,p.minimo-p.quantidade);
@@ -2781,7 +2875,7 @@ function enviarWhatsApp(){
   if(!alertas.length){toast("Nenhum produto precisa de reposição!","ok");return;}
   const zerados=alertas.filter(p=>statusQtd(p.quantidade,p.minimo)==="zerado");
   const baixos=alertas.filter(p=>statusQtd(p.quantidade,p.minimo)==="baixo");
-  const data=new Date().toLocaleDateString("pt-BR");
+  const data = _dataHoje();
   let txt=`🛒 *LISTA DE COMPRAS*\n📅 ${data}\n${"─".repeat(30)}\n\n`;
   if(zerados.length){
     txt+=`🔴 *SEM ESTOQUE (URGENTE)*\n`;
@@ -2809,7 +2903,7 @@ function gerarPlanilhaCompras(){
   if(typeof XLSX === "undefined"){toast("Aguarde, carregando biblioteca...","info");return;}
   const alertas=estoque.filter(p=>statusQtd(p.quantidade,p.minimo)!=="ok");
   if(!alertas.length){toast("Nenhum produto precisa de reposição!","ok");return;}
-  const data=new Date().toLocaleDateString("pt-BR");
+  const data = _dataHoje();
   const zerados=alertas.filter(p=>statusQtd(p.quantidade,p.minimo)==="zerado");
   const baixos=alertas.filter(p=>statusQtd(p.quantidade,p.minimo)==="baixo");
 
@@ -2857,7 +2951,7 @@ function gerarPlanilhaCompras(){
 function baixarListaCompras(){
   const alertas=estoque.filter(p=>statusQtd(p.quantidade,p.minimo)!=="ok");
   if(!alertas.length){toast("Nenhum produto precisa de reposição!","ok");return;}
-  const data=new Date().toLocaleDateString("pt-BR");
+  const data = _dataHoje();
   let txt=`LISTA DE COMPRAS — ADEGA FÉLIX\nGerada em ${data}\n${"─".repeat(40)}\n\n`;
   const zerados=alertas.filter(p=>statusQtd(p.quantidade,p.minimo)==="zerado");
   const baixos=alertas.filter(p=>statusQtd(p.quantidade,p.minimo)==="baixo");
@@ -2950,7 +3044,7 @@ function mostrarProduto(p){
 async function registrar(){
   if(!produtoAtual)return;
   const q=qtdAtual,obs=document.getElementById("obs-input").value.trim();
-  const now=new Date(),hora=now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}),data=now.toLocaleDateString("pt-BR");
+  const now=new Date(),hora=_horaAgora(),data=_dataHoje();
   const existe=estoque.find(p=>p.codigo===produtoAtual.codigo);
 
   if(existe){
@@ -3204,8 +3298,8 @@ async function confirmarPagamento() {
   if (!window._pgto?.p1) return;
   const total = carrinho.reduce((a,b) => a + b.preco * b.qtd, 0);
   const now = new Date();
-  const hora = now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-  const data = now.toLocaleDateString("pt-BR");
+  const hora = _horaAgora();
+  const data = _dataHoje();
   const labels = { dinheiro:"💵 Dinheiro", pix:"📱 Pix", cartao:"💳 Cartão" };
   const p1 = labels[window._pgto.p1];
   const p2 = window._pgto.p2 ? labels[window._pgto.p2] : null;
@@ -4038,8 +4132,8 @@ document.getElementById("fiado-bip-input").addEventListener("keydown", async e =
 
   const valor = parseFloat(p.preco) || 0;
   const now = new Date();
-  const data = now.toLocaleDateString("pt-BR");
-  const hora = now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const data = _dataHoje();
+  const hora = _horaAgora();
   const desc = `${p.nome} x1`;
 
   // Descontar estoque
