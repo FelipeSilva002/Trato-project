@@ -1332,7 +1332,6 @@ body::after {
       .nav-links { display: none; }
       #nav-mob-btn { display: inline-flex !important; }
       .top-bar { display: none; }
-      nav .nav-logo img { height: 44px !important; max-height: 44px !important; }
 
       .hero { padding: 90px 5% 50px; }
       .hero-inner { grid-template-columns: 1fr; text-align: center; }
@@ -1340,6 +1339,8 @@ body::after {
       .hero h1 { font-size: clamp(32px, 6vw, 48px); }
       .hero-ctas { justify-content: center; flex-wrap: wrap; }
       .hero-badge { margin: 0 auto; }
+      .hero-topbar { top: 60px; }
+      .hero-topbar-inner { font-size: 12px; padding: 7px 14px; max-width: 90vw; text-align: center; }
 
       .features-grid { grid-template-columns: 1fr 1fr; }
       .segmentos-grid { grid-template-columns: 1fr 1fr; }
@@ -1350,13 +1351,15 @@ body::after {
     /* ── MOBILE (≤600px) ── */
     @media (max-width: 600px) {
       nav { padding: 10px 4%; }
-      nav .nav-logo img { height: 40px !important; max-height: 40px !important; }
+      .nav-logo img { height: 40px !important; }
 
       .hero { padding: 80px 5% 40px; }
       .hero h1 { font-size: clamp(26px, 8vw, 38px); line-height: 1.2; }
       .hero-sub { font-size: 15px; }
       .hero-ctas { flex-direction: column; align-items: center; gap: 12px; }
       .hero-ctas a, .hero-ctas button { width: 100%; text-align: center; justify-content: center; }
+      .hero-topbar-inner { font-size: 11px; padding: 6px 12px; gap: 6px; }
+      .hero-topbar-arrow { display: none; }
 
       .stats-inner { grid-template-columns: 1fr 1fr; }
       .stat-num { font-size: 32px; }
@@ -1447,7 +1450,33 @@ body::after {
   }
   }
 
-
+    /* ── HERO TOPBAR ── */
+    .hero-topbar {
+      position: absolute;
+      top: 70px;
+      left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .hero-topbar-inner {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.88);
+      border: 1px solid rgba(42,181,197,0.25);
+      backdrop-filter: blur(12px);
+      padding: 9px 20px;
+      border-radius: 100px;
+      font-size: 13px;
+      color: var(--azul-escuro);
+      box-shadow: 0 4px 20px rgba(26,46,90,0.10);
+      pointer-events: auto;
+    }
+    .hero-topbar-inner strong { color: var(--azul-medio); }
+    .hero-topbar-pill { font-size: 14px; }
+    .hero-topbar-arrow { color: var(--teal); font-weight: 700; }
 
   
     /* ── CARROSSEL ── */
@@ -1625,17 +1654,13 @@ body::after {
   grid-column: 1 / -1;
 }
 .top-bar {
-  display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
 }
 
 .dot {
   width: 8px;
   height: 8px;
-  min-width: 8px;
-  flex-shrink: 0;
   background: #22c55e;
   border-radius: 50%;
   animation: pulse 1.5s infinite;
@@ -1675,6 +1700,15 @@ body::after {
     <!-- Blurs laterais decorativos -->
     <div class="hero-blur-left">
           </div>
+    <!-- Faixa topo -->
+    <div class="hero-topbar">
+      <div class="hero-topbar-inner">
+        <span class="hero-topbar-pill">⭐</span>
+        <span>Mais de <strong>200 empresas</strong> já utilizam a Trato</span>
+        <span class="hero-topbar-arrow">→</span>
+      </div>
+    </div>
+
     <div class="hero-inner">
       <div>
         <div class="hero-badge">Sistema de Gestão</div>
