@@ -126,9 +126,6 @@ body::after {
       padding: 5px 14px;
       border-radius: 100px;
       white-space: nowrap;
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
     }
 
     /* ── HERO ── */
@@ -1654,7 +1651,9 @@ body::after {
   grid-column: 1 / -1;
 }
 .top-bar {
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -1703,7 +1702,7 @@ body::after {
     <!-- Faixa topo -->
     <div class="hero-topbar">
       <div class="hero-topbar-inner">
-        <span class="hero-topbar-pill">⭐</span>
+        <span class="dot" style="width:8px;height:8px;min-width:8px;flex-shrink:0;display:inline-block;"></span>
         <span>Mais de <strong>200 empresas</strong> já utilizam a Trato</span>
         <span class="hero-topbar-arrow">→</span>
       </div>
