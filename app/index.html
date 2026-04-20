@@ -807,6 +807,14 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
                   <button class="stepper-btn" onclick="ajustarQtd(1)">+</button>
                 </div>
               </div>
+              <div class="form-field" id="campo-tipo-unidade" style="display:none">
+                <label class="form-label">Tipo de quantidade</label>
+                <div class="tipo-toggle">
+                  <button class="tipo-opt entrada ativo" id="opt-avulso" onclick="setTipoUnidade('avulso')">🍺 Avulso</button>
+                  <button class="tipo-opt saida" id="opt-caixa-mov" onclick="setTipoUnidade('caixa')">📦 Caixa</button>
+                </div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px" id="info-caixa-mov"></div>
+              </div>
               <div class="form-field">
                 <label class="form-label">Observação <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
                 <input class="form-input" type="text" id="obs-input" placeholder="Ex: NF 1042, Fornecedor X...">
@@ -1125,10 +1133,6 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
         <div id="rel-pgto-lista"></div>
       </div>
 
-      <div class="card mb16">
-        <div class="card-header"><div class="card-title">🏆 Mais Vendidos</div><div class="card-meta">por saídas registradas</div></div>
-        <div id="relatorio-top"></div>
-      </div>
       <div class="card mb16">
         <div class="card-header">
           <div class="card-title">📋 Vendas do Período</div>
@@ -1454,6 +1458,14 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
         <label class="form-label">Preço de venda (R$)</label>
         <input class="form-input" type="number" id="edit-preco" min="0" step="0.01" placeholder="Ex: 9,90">
       </div>
+      <div class="form-field">
+        <label class="form-label">Unidades por caixa <span style="font-weight:400;color:var(--text3)">(opcional — deixe vazio se não vende por caixa)</span></label>
+        <input class="form-input" type="number" id="edit-unidades-caixa" min="1" placeholder="Ex: 24">
+      </div>
+      <div class="form-field" id="edit-preco-caixa-field" style="display:none">
+        <label class="form-label">Preço da caixa (R$) <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
+        <input class="form-input" type="number" id="edit-preco-caixa" min="0" step="0.01" placeholder="Ex: 49.90">
+      </div>
     </div>
     <div class="edit-modal-footer">
       <button class="btn btn-secondary" onclick="fecharEdicao()">Cancelar</button>
@@ -1514,6 +1526,14 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       <div class="form-field">
         <label class="form-label">Preço de venda (R$) <span style="color:var(--red)">*</span></label>
         <input class="form-input" type="number" id="cm-preco" min="0" step="0.01" placeholder="Ex: 9.90">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Unidades por caixa <span style="font-weight:400;color:var(--text3)">(opcional — deixe vazio se não vende por caixa)</span></label>
+        <input class="form-input" type="number" id="cm-unidades-caixa" min="1" placeholder="Ex: 24" oninput="togglePrecoCaixaCM()">
+      </div>
+      <div class="form-field" id="cm-preco-caixa-field" style="display:none">
+        <label class="form-label">Preço da caixa (R$) <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
+        <input class="form-input" type="number" id="cm-preco-caixa" min="0" step="0.01" placeholder="Ex: 49.90">
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px">* Campos obrigatórios</div>
     </div>
@@ -2091,14 +2111,7 @@ async function fazerLogin() {
   const pass  = document.getElementById("login-pass").value;
   const btn   = document.getElementById("login-btn");
 
-  // Limpa erro anterior
-  const erroEl = document.getElementById("login-erro");
-  erroEl.style.display = "none";   // ← adicione esta linha
-
-  if (!email || !pass) { mostrarErroLogin("Preencha e-mail e senha."); return; }
-  // ... resto da função permanece igual
-
-  document.getElementById("login-erro").classList.remove("show");
+  document.getElementById("login-erro").style.display = "none";
 
   if (!email || !pass) { mostrarErroLogin("Preencha e-mail e senha."); return; }
 
@@ -2701,7 +2714,7 @@ function filtrarProdutos(){
         <div class="produto-card-nome" title="${p.nome}">${p.nome}</div>
         <div class="produto-card-marca">${p.marca} <span class="badge-cat ${cl}">${p.categoria}</span></div>
         <div class="produto-card-footer">
-          <span class="produto-card-qtd ${st}">${p.quantidade} un.</span>
+          <span class="produto-card-qtd ${st}">${p.quantidade} un.${p.unidades_por_caixa?" · "+Math.floor(p.quantidade/p.unidades_por_caixa)+" cx":""}</span>
           <span class="badge badge-${st}">${labelStatus(st)}</span>
         </div>
         <div style="font-size:13px;font-weight:700;color:var(--gold);margin-top:8px">R$ ${p.preco?p.preco.toFixed(2).replace(".",","):"—"}</div>
@@ -2735,6 +2748,7 @@ function filtrarPeriodo(periodo,btn){
     document.getElementById("data-fim").value=hoje.toISOString().split("T")[0];
   } else {
     custom.classList.remove("show");
+    renderRelatorio();
   }
 }
 
@@ -2783,13 +2797,13 @@ function renderRelatorio(){
   const alertas = estoque.filter(p=>statusQtd(p.quantidade,p.minimo)!=="ok").length;
 
   // Vendas por forma de pagamento
-  function extrairPgto(obs){ if(!obs)return null; if(obs.includes("Dinheiro"))return"dinheiro"; if(obs.includes("Pix"))return"pix"; if(obs.includes("Cartão"))return"cartao"; return null; }
-  function extrairValor(obs){ const m=obs&&obs.match(/R\$ ([\d.]+)/); return m?parseFloat(m[1]):0; }
+  function extrairPgto(obs){ if(!obs)return null; const o=obs.toLowerCase(); if(o.includes("dinheiro"))return"dinheiro"; if(o.includes("pix"))return"pix"; if(o.includes("cartão")||o.includes("cartao")||o.includes("débito")||o.includes("crédito"))return"cartao"; return null; }
+  function extrairValor(h){ const m=h.obs&&h.obs.match(/R\$ ([\d.,]+)/); if(m) return parseFloat(m[1].replace(",",".")); return (h.preco||0)*(h.qtd||1); }
 
   const vendasPDV = porPeriodo.filter(h=>h.tipo==="saida"&&h.obs&&h.obs.includes("PDV"));
-  const totalGeral = vendasPDV.reduce((a,h)=>a+extrairValor(h.obs),0);
+  const totalGeral = vendasPDV.reduce((a,h)=>a+extrairValor(h),0);
   const pgtoMap = { dinheiro:{label:"💵 Dinheiro",total:0,qtd:0}, pix:{label:"📱 Pix",total:0,qtd:0}, cartao:{label:"💳 Cartão",total:0,qtd:0} };
-  vendasPDV.forEach(h=>{ const tipo=extrairPgto(h.obs); if(tipo&&pgtoMap[tipo]){pgtoMap[tipo].total+=extrairValor(h.obs);pgtoMap[tipo].qtd+=h.qtd;} });
+  vendasPDV.forEach(h=>{ const tipo=extrairPgto(h.obs); if(tipo&&pgtoMap[tipo]){pgtoMap[tipo].total+=extrairValor(h);pgtoMap[tipo].qtd+=h.qtd;} });
 
   const elTotalGeral = document.getElementById("rel-total-geral");
   if(elTotalGeral) elTotalGeral.textContent = "Total: R$ "+totalGeral.toFixed(2).replace(".",",");
@@ -2806,15 +2820,7 @@ function renderRelatorio(){
     <div class="rel-card"><div class="rel-card-label">Total em Vendas</div><div class="rel-card-value" style="color:var(--gold)">R$ ${totalGeral.toFixed(2).replace(".",",")}</div><div class="rel-card-sub">pelo PDV</div></div>
     <div class="rel-card"><div class="rel-card-label">Alertas</div><div class="rel-card-value" style="color:var(--yellow)">${alertas}</div><div class="rel-card-sub">para repor</div></div>`;
 
-  const top=topVendidosPeriodo(porPeriodo),maxQ=top.length?top[0][1]:1;
-  document.getElementById("relatorio-top").innerHTML=top.length===0?'<div class="empty-state">Nenhuma saída registrada.</div>'
-    :top.map(([nome,qtd],i)=>{
-        const rc=["r1","r2","r3","rn","rn"][i]||"rn",prod=estoque.find(p=>p.nome===nome)||{marca:"—"};
-        return `<div class="top-item"><div class="top-rank ${rc}">${i+1}</div>
-          <div class="top-info"><div class="top-nome">${nome}</div><div class="top-marca">${prod.marca}</div></div>
-          <div class="top-bar-wrap"><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(qtd/maxQ*100)}%"></div></div></div>
-          <div class="top-qtd">${qtd} un.</div></div>`;
-      }).join("");
+  // relatorio-top removido
 
   // Lista de vendas individuais com data, hora e forma de pagamento
   const elVendasLista = document.getElementById('rel-vendas-lista');
@@ -2828,7 +2834,7 @@ function renderRelatorio(){
     elVendasLista.innerHTML = vendasOrdenadas.length === 0
       ? '<div class="empty-state">Nenhuma venda no período.</div>'
       : vendasOrdenadas.map(h => {
-          const valorVenda = extrairValor(h.obs);
+          const valorVenda = extrairValor(h);
           const pgtoTipo = extrairPgto(h.obs);
           const pgtoIcon = pgtoTipo === 'pix' ? '📱' : pgtoTipo === 'cartao' ? '💳' : '💵';
           const partes = h.data.split('/');
@@ -3024,9 +3030,11 @@ async function buscarProduto(codigo){
   }catch{mostrarProduto({codigo,nome:"Produto "+codigo.slice(-4),marca:"—",categoria:"Outro",quantidade:0,minimo:6,novo:true});}
 }
 
+let tipoUnidadeAtual = "avulso";
 function mostrarProduto(p){
-  produtoAtual=p;qtdAtual=1;tipoAtual="entrada";
+  produtoAtual=p;qtdAtual=1;tipoAtual="entrada";tipoUnidadeAtual="avulso";
   const est=estoque.find(x=>x.codigo===p.codigo);
+  const uc = est ? (est.unidades_por_caixa||null) : null;
   document.getElementById("state-loading").classList.add("hidden");
   document.getElementById("form-panel").classList.remove("hidden");
   document.getElementById("produtos-grid-wrap").classList.add("hidden");
@@ -3034,18 +3042,43 @@ function mostrarProduto(p){
   document.getElementById("pf-marca").textContent=p.marca;
   document.getElementById("pf-codigo").textContent=p.codigo;
   document.getElementById("pf-cat").textContent=p.categoria;
-  document.getElementById("pf-estoque").textContent=est?est.quantidade+" un.":"Novo produto";
+  if(est){
+    const qtdUn=est.quantidade;
+    const qtdCx=uc?Math.floor(qtdUn/uc):null;
+    document.getElementById("pf-estoque").textContent=qtdCx!==null?`${qtdUn} un. (${qtdCx} cx)`:`${qtdUn} un.`;
+  } else {
+    document.getElementById("pf-estoque").textContent="Novo produto";
+  }
   document.getElementById("qtd-val").textContent="1";
   document.getElementById("obs-input").value="";
+  const campoCaixa=document.getElementById("campo-tipo-unidade");
+  if(uc&&campoCaixa){
+    campoCaixa.style.display="block";
+    document.getElementById("info-caixa-mov").textContent="1 caixa = "+uc+" unidades";
+    setTipoUnidade("avulso");
+  } else if(campoCaixa){
+    campoCaixa.style.display="none";
+  }
   setTipo("entrada");
   document.getElementById("state-produto").classList.remove("hidden");
+}
+function setTipoUnidade(t){
+  tipoUnidadeAtual=t;
+  const btnAv=document.getElementById("opt-avulso");
+  const btnCx=document.getElementById("opt-caixa-mov");
+  if(btnAv){btnAv.className="tipo-opt "+(t==="avulso"?"entrada ativo":"saida");}
+  if(btnCx){btnCx.className="tipo-opt "+(t==="caixa"?"entrada ativo":"saida");}
 }
 
 async function registrar(){
   if(!produtoAtual)return;
-  const q=qtdAtual,obs=document.getElementById("obs-input").value.trim();
+  const obs=document.getElementById("obs-input").value.trim();
   const now=new Date(),hora=_horaAgora(),data=_dataHoje();
   const existe=estoque.find(p=>p.codigo===produtoAtual.codigo);
+  // Calcular qtd real em unidades (multiplicar por caixa se for o caso)
+  const uc = existe ? (existe.unidades_por_caixa||null) : null;
+  const fator = (tipoUnidadeAtual==="caixa" && uc) ? uc : 1;
+  const q = qtdAtual * fator;
 
   if(existe){
     // Produto já existe — atualiza quantidade no banco
@@ -3075,11 +3108,12 @@ async function registrar(){
     if(!FOTOS[produtoAtual.codigo])FOTOS[produtoAtual.codigo]=null;
   }
 
+  const labelQtd = (tipoUnidadeAtual==="caixa"&&fator>1) ? `${qtdAtual} cx (${q} un.)` : `${q} un.`;
   historico.push({id:historico.length+1,data,hora,produto:produtoAtual.nome,codigo:produtoAtual.codigo,tipo:tipoAtual,qtd:q,obs});
   renderDashboard();
   renderPDVGrid();
   renderProdutos();
-  toast(`${tipoAtual==="entrada"?"Entrada":"Saída"} registrada — ${q} un. de ${produtoAtual.nome}`,"ok");
+  toast(`${tipoAtual==="entrada"?"Entrada":"Saída"} registrada — ${labelQtd} de ${produtoAtual.nome}`,"ok");
   resetPanel();
 }
 
@@ -3103,12 +3137,22 @@ function renderPDVGrid() {
     const imagemHtml = foto
       ? `<img src="${foto}" alt="${p.nome}" style="width:64px;height:64px;object-fit:contain;margin-bottom:8px;border-radius:6px" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="pdv-card-emoji" style="display:none">${emoji}</span>`
       : `<span class="pdv-card-emoji">${emoji}</span>`;
-    return `<div class="pdv-card ${semEstoque?"sem-estoque":""}" onclick="${semEstoque?"":"adicionarAoCarrinho('"+p.codigo+"')"}">
+    const uc = p.unidades_por_caixa || null;
+    const estoqueLabel = uc ? `${p.quantidade} un. (${Math.floor(p.quantidade/uc)} cx)` : `${p.quantidade} un. em estoque`;
+    // Botões caixa/avulso se produto tiver unidades_por_caixa
+    const botoesCaixa = (!semEstoque && uc) ? `
+      <div style="display:flex;gap:4px;margin-top:6px;width:100%">
+        <button style="flex:1;font-size:10px;padding:3px 0;border-radius:4px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-weight:600" onclick="event.stopPropagation();adicionarAoCarrinho('${p.codigo}','avulso')">🍺 Avulso</button>
+        <button style="flex:1;font-size:10px;padding:3px 0;border-radius:4px;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;font-weight:600" onclick="event.stopPropagation();adicionarAoCarrinho('${p.codigo}','caixa')">📦 Caixa</button>
+      </div>` : "";
+    const clickHandler = (!semEstoque && !uc) ? `adicionarAoCarrinho('${p.codigo}')` : "";
+    return `<div class="pdv-card ${semEstoque?"sem-estoque":""}" onclick="${clickHandler}">
       ${semEstoque ? '<div class="pdv-card-badge">Esgotado</div>' : ""}
       ${imagemHtml}
       <div class="pdv-card-nome">${p.nome}</div>
-      <div class="pdv-card-preco">R$ ${p.preco?(p.preco.toFixed(2).replace(".",",")):"—"}</div>
-      <div class="pdv-card-estoque">${p.quantidade} un. em estoque</div>
+      <div class="pdv-card-preco">R$ ${p.preco?(p.preco.toFixed(2).replace(".",",")):"—"}${uc&&p.preco_caixa?` · Cx R$ ${p.preco_caixa.toFixed(2).replace(".",",")}`:""}</div>
+      <div class="pdv-card-estoque">${estoqueLabel}</div>
+      ${botoesCaixa}
     </div>`;
   }).join("");
 }
@@ -3130,22 +3174,30 @@ function buscarProdutoVenda() {
     <div class="busca-item" onclick="adicionarAoCarrinho('${p.codigo}')">
       <div>
         <div class="busca-item-nome">${p.nome}</div>
-        <div class="busca-item-sub">${p.marca} · ${p.quantidade} un. disponíveis</div>
+        <div class="busca-item-sub">${p.marca} · ${p.quantidade} un.${p.unidades_por_caixa?" ("+Math.floor(p.quantidade/p.unidades_por_caixa)+" cx)":""}</div>
       </div>
       <div class="busca-item-preco">R$ ${p.preco?(p.preco.toFixed(2).replace(".",",")):"—"}</div>
     </div>`).join("");
 }
 
-function adicionarAoCarrinho(codigo) {
+function adicionarAoCarrinho(codigo, tipoVenda) {
   const p = estoque.find(x => x.codigo === codigo);
   if (!p) return;
   if (p.quantidade <= 0) { toast("Produto sem estoque!", "error"); return; }
-  const item = carrinho.find(x => x.codigo === codigo);
+  const uc = p.unidades_por_caixa || null;
+  const ehCaixa = tipoVenda === "caixa" && uc;
+  const qtdUnidades = ehCaixa ? uc : 1;
+  const precoUnit = ehCaixa && p.preco_caixa ? p.preco_caixa : p.preco || 0;
+  const nomeCarrinho = ehCaixa ? `${p.nome} (Caixa)` : p.nome;
+  const chaveCarrinho = ehCaixa ? codigo + "_caixa" : codigo;
+  const item = carrinho.find(x => x._chave === chaveCarrinho);
   if (item) {
-    if (item.qtd >= p.quantidade) { toast("Quantidade máxima atingida!", "error"); return; }
+    const novaQtdTotal = (item.qtd + 1) * item._qtdUn;
+    if (novaQtdTotal > p.quantidade) { toast("Quantidade máxima atingida!", "error"); return; }
     item.qtd++;
   } else {
-    carrinho.push({ codigo: p.codigo, nome: p.nome, preco: p.preco||0, qtd: 1, max: p.quantidade });
+    if (qtdUnidades > p.quantidade) { toast("Estoque insuficiente para uma caixa!", "error"); return; }
+    carrinho.push({ _chave: chaveCarrinho, _qtdUn: qtdUnidades, codigo: p.codigo, produtoId: p.id, nome: nomeCarrinho, preco: precoUnit, qtd: 1, max: p.quantidade });
   }
   document.getElementById("venda-busca").value = "";
   document.getElementById("venda-busca-resultado").innerHTML = "";
@@ -3174,11 +3226,14 @@ function renderCarrinho() {
     return;
   }
 
-  lista.innerHTML = carrinho.map((item, i) => `
-    <div class="carrinho-item">
+  lista.innerHTML = carrinho.map((item, i) => {
+    const ehCaixa = item._chave && item._chave.endsWith("_caixa");
+    const labelUnit = ehCaixa ? "/ cx" : "/ un.";
+    const subInfo = ehCaixa ? `<span style="font-size:10px;color:var(--text3);margin-left:4px">(${item._qtdUn} un./cx)</span>` : "";
+    return `<div class="carrinho-item">
       <div style="flex:1">
-        <div class="carrinho-nome">${item.nome}</div>
-        <div class="carrinho-preco">R$ ${item.preco.toFixed(2).replace(".",",")} / un.</div>
+        <div class="carrinho-nome">${item.nome}${subInfo}</div>
+        <div class="carrinho-preco">R$ ${item.preco.toFixed(2).replace(".",",")} ${labelUnit}</div>
       </div>
       <div class="carrinho-qtd-ctrl">
         <button class="carrinho-qtd-btn" onclick="ajustarCarrinho(${i},-1)">−</button>
@@ -3187,7 +3242,8 @@ function renderCarrinho() {
       </div>
       <div class="carrinho-total">R$ ${(item.preco*item.qtd).toFixed(2).replace(".",",")}</div>
       <button class="carrinho-remove" onclick="removerDoCarrinho(${i})">✕</button>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 
 function ajustarCarrinho(i, d) {
@@ -3324,16 +3380,19 @@ async function confirmarPagamento() {
     } else {
       const p = estoque.find(x => x.codigo === item.codigo);
       if (p) {
-        p.quantidade = Math.max(0, p.quantidade - item.qtd);
+        // Se for venda de caixa, descontar em unidades (_qtdUn * qtd caixas)
+        const qtdDescontar = (item._qtdUn || 1) * item.qtd;
+        p.quantidade = Math.max(0, p.quantidade - qtdDescontar);
         db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id);
       }
     }
     const itemTotal = item.preco * item.qtd;
+    const qtdHistorico = (item._qtdUn || 1) * item.qtd;
     historico.push({
       id: historico.length + 1, data, hora,
       produto: item.nome, codigo: item.codigo,
       preco: item.preco,
-      tipo: "saida", qtd: item.qtd,
+      tipo: "saida", qtd: qtdHistorico,
       obs: `PDV ${pgtoLabel} — R$ ${itemTotal.toFixed(2)}`
     });
     registrosVenda.push({
@@ -3341,7 +3400,7 @@ async function confirmarPagamento() {
       caixa_id: _caixaAtual?.id || null,
       produto: item.nome,
       codigo: item.codigo,
-      qtd: item.qtd,
+      qtd: qtdHistorico,
       preco: item.preco,
       total: itemTotal,
       forma_pgto: p1,
@@ -3376,6 +3435,9 @@ function abrirCadastroManual() {
   document.getElementById("cm-categoria").value = "";
   document.getElementById("cm-quantidade").value= "";
   document.getElementById("cm-minimo").value    = "6";
+  document.getElementById("cm-unidades-caixa").value = "";
+  document.getElementById("cm-preco-caixa").value = "";
+  document.getElementById("cm-preco-caixa-field").style.display = "none";
   document.getElementById("cadastro-manual-modal").classList.add("open");
 }
 
@@ -3391,6 +3453,8 @@ async function salvarCadastroManual() {
   const minimo    = parseInt(document.getElementById("cm-minimo").value) || 6;
   const preco     = parseFloat(document.getElementById("cm-preco")?.value) || 0;
   const codigo    = document.getElementById("cm-codigo").value.trim() || "manual-" + Date.now();
+  const unidades_por_caixa = parseInt(document.getElementById("cm-unidades-caixa").value) || null;
+  const preco_caixa = parseFloat(document.getElementById("cm-preco-caixa").value) || null;
 
   if (!nome || !marca || !categoria) {
     toast("Preencha todos os campos obrigatórios.", "error");
@@ -3404,7 +3468,7 @@ async function salvarCadastroManual() {
 
   const { data, error } = await db
     .from('produtos')
-    .insert([{ cliente_id: _clienteId, codigo, nome, marca, categoria, quantidade, minimo, preco, imagem_url: null }])
+    .insert([{ cliente_id: _clienteId, codigo, nome, marca, categoria, quantidade, minimo, preco, imagem_url: null, unidades_por_caixa, preco_caixa }])
     .select()
     .single();
 
@@ -3435,6 +3499,10 @@ function abrirEdicao(codigo) {
   document.getElementById("edit-quantidade").value= p.quantidade;
   document.getElementById("edit-minimo").value    = p.minimo;
   document.getElementById("edit-preco").value     = p.preco||"";
+  const uc = p.unidades_por_caixa || "";
+  document.getElementById("edit-unidades-caixa").value = uc;
+  document.getElementById("edit-preco-caixa").value = p.preco_caixa||"";
+  document.getElementById("edit-preco-caixa-field").style.display = uc ? "block" : "none";
   // Carregar imagem atual
   const foto = FOTOS[codigo] || "";
   document.getElementById("edit-imagem-url").value = foto;
@@ -3488,6 +3556,8 @@ async function salvarEdicao() {
     minimo:     parseInt(document.getElementById("edit-minimo").value) || 1,
     preco:      parseFloat(document.getElementById("edit-preco").value) || 0,
     imagem_url: novaImagem || null,
+    unidades_por_caixa: parseInt(document.getElementById("edit-unidades-caixa").value) || null,
+    preco_caixa: parseFloat(document.getElementById("edit-preco-caixa").value) || null,
   };
 
   const { error } = await db
@@ -3976,16 +4046,20 @@ async function renderMovimentos() {
   const totalSangria = (movs||[]).filter(m => m.tipo === "sangria").reduce((a,m) => a + parseFloat(m.valor||0), 0);
   const totalSuprimento = (movs||[]).filter(m => m.tipo === "suprimento").reduce((a,m) => a + parseFloat(m.valor||0), 0);
 
-  // Atualizar KPI sangria e esperado
+  // Atualizar KPI sangria e esperado — sempre, independente de _caixaTotais
   document.getElementById("caixa-kpi-sangria").textContent = "R$ " + totalSangria.toFixed(2).replace(".",",");
-  if (window._caixaTotais) {
-    const novoEsperado = window._caixaTotais.totalDinheiro + parseFloat(_caixaAtual.valor_abertura||0) - totalSangria + totalSuprimento;
-    window._caixaTotais.esperado = novoEsperado;
-    document.getElementById("caixa-kpi-esperado").textContent = "R$ " + novoEsperado.toFixed(2).replace(".",",");
-    // Recalcular diferença se já tiver valor contado
-    const contado = parseFloat(document.getElementById("caixa-valor-contado").value) || 0;
-    if (contado) calcularDiferenca();
-  }
+
+  const _totalDinheiro = window._caixaTotais && window._caixaTotais.totalDinheiro !== undefined
+    ? window._caixaTotais.totalDinheiro
+    : (parseFloat((document.getElementById("caixa-kpi-dinheiro").textContent||"").replace("R$ ","").replace(",",".")) || 0);
+
+  const novoEsperado = _totalDinheiro + parseFloat(_caixaAtual.valor_abertura||0) - totalSangria + totalSuprimento;
+
+  if (window._caixaTotais) window._caixaTotais.esperado = novoEsperado;
+  document.getElementById("caixa-kpi-esperado").textContent = "R$ " + novoEsperado.toFixed(2).replace(".",",");
+
+  const contado = parseFloat(document.getElementById("caixa-valor-contado").value) || 0;
+  if (contado) calcularDiferenca();
 
   if (!movs?.length) {
     lista.innerHTML = '<div style="padding:12px 0;font-size:13px;color:var(--text3)">Nenhum movimento registrado.</div>';
@@ -5617,6 +5691,18 @@ async function adicionarItemMesaAvulso(desc, preco, qtd) {
     toast("Erro ao adicionar item avulso na mesa.", "error");
   }
 }
+
+function togglePrecoCaixaCM(){
+  const v=document.getElementById("cm-unidades-caixa").value;
+  document.getElementById("cm-preco-caixa-field").style.display=v?"block":"none";
+}
+// Expor toggle para edição também
+document.addEventListener("DOMContentLoaded",function(){
+  const el=document.getElementById("edit-unidades-caixa");
+  if(el) el.addEventListener("input",function(){
+    document.getElementById("edit-preco-caixa-field").style.display=this.value?"block":"none";
+  });
+});
 </script>
 <!-- MODAL VENDA AVULSA -->
 <div class="edit-modal-overlay" id="modal-avulsa">
@@ -5647,6 +5733,5 @@ async function adicionarItemMesaAvulso(desc, preco, qtd) {
     </div>
   </div>
 </div>
-
 </body>
 </html>
