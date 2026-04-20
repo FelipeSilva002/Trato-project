@@ -1466,6 +1466,10 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
         <label class="form-label">Preço da caixa (R$) <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
         <input class="form-input" type="number" id="edit-preco-caixa" min="0" step="0.01" placeholder="Ex: 49.90">
       </div>
+      <div class="form-field" id="edit-codigo-caixa-field" style="display:none">
+        <label class="form-label">Código de barras da caixa <span style="font-weight:400;color:var(--text3)">(bipe a caixa para preencher)</span></label>
+        <input class="form-input" type="text" id="edit-codigo-caixa" placeholder="Ex: 7891991010863" style="font-size:12px">
+      </div>
     </div>
     <div class="edit-modal-footer">
       <button class="btn btn-secondary" onclick="fecharEdicao()">Cancelar</button>
@@ -1534,6 +1538,10 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       <div class="form-field" id="cm-preco-caixa-field" style="display:none">
         <label class="form-label">Preço da caixa (R$) <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
         <input class="form-input" type="number" id="cm-preco-caixa" min="0" step="0.01" placeholder="Ex: 49.90">
+      </div>
+      <div class="form-field" id="cm-codigo-caixa-field" style="display:none">
+        <label class="form-label">Código de barras da caixa <span style="font-weight:400;color:var(--text3)">(bipe a caixa para preencher)</span></label>
+        <input class="form-input" type="text" id="cm-codigo-caixa" placeholder="Ex: 7891991010863" style="font-size:12px">
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px">* Campos obrigatórios</div>
     </div>
@@ -2996,6 +3004,18 @@ function resetPanel(){
 
 async function buscarProduto(codigo){
   fecharScanner();
+  // Verificar se é código de caixa de algum produto cadastrado
+  const produtoDaCaixa = estoque.find(p => p.codigo_caixa && String(p.codigo_caixa) === String(codigo));
+  if(produtoDaCaixa){
+    // Redirecionar para o produto correspondente, já em modo caixa
+    document.getElementById("produtos-grid-wrap").classList.add("hidden");
+    document.getElementById("form-panel").classList.remove("hidden");
+    document.getElementById("state-loading").classList.remove("hidden");
+    document.getElementById("state-produto").classList.add("hidden");
+    nav("produtos");
+    mostrarProduto({...produtoDaCaixa, novo:false, _forceCaixa:true});
+    return;
+  }
   // Esconde grid antes de navegar para evitar flash
   document.getElementById("produtos-grid-wrap").classList.add("hidden");
   document.getElementById("form-panel").classList.remove("hidden");
@@ -3055,12 +3075,17 @@ function mostrarProduto(p){
   if(uc&&campoCaixa){
     campoCaixa.style.display="block";
     document.getElementById("info-caixa-mov").textContent="1 caixa = "+uc+" unidades";
-    setTipoUnidade("avulso");
+    // Se veio de bip de caixa, pré-selecionar modo caixa
+    setTipoUnidade(p._forceCaixa ? "caixa" : "avulso");
   } else if(campoCaixa){
     campoCaixa.style.display="none";
   }
   setTipo("entrada");
   document.getElementById("state-produto").classList.remove("hidden");
+  // Toast informativo se foi bipe de caixa
+  if(p._forceCaixa && uc){
+    toast("📦 Código de caixa — "+uc+" un. por caixa","ok");
+  }
 }
 function setTipoUnidade(t){
   tipoUnidadeAtual=t;
@@ -3438,6 +3463,8 @@ function abrirCadastroManual() {
   document.getElementById("cm-unidades-caixa").value = "";
   document.getElementById("cm-preco-caixa").value = "";
   document.getElementById("cm-preco-caixa-field").style.display = "none";
+  document.getElementById("cm-codigo-caixa").value = "";
+  document.getElementById("cm-codigo-caixa-field").style.display = "none";
   document.getElementById("cadastro-manual-modal").classList.add("open");
 }
 
@@ -3455,6 +3482,7 @@ async function salvarCadastroManual() {
   const codigo    = document.getElementById("cm-codigo").value.trim() || "manual-" + Date.now();
   const unidades_por_caixa = parseInt(document.getElementById("cm-unidades-caixa").value) || null;
   const preco_caixa = parseFloat(document.getElementById("cm-preco-caixa").value) || null;
+  const codigo_caixa = document.getElementById("cm-codigo-caixa").value.trim() || null;
 
   if (!nome || !marca || !categoria) {
     toast("Preencha todos os campos obrigatórios.", "error");
@@ -3468,7 +3496,7 @@ async function salvarCadastroManual() {
 
   const { data, error } = await db
     .from('produtos')
-    .insert([{ cliente_id: _clienteId, codigo, nome, marca, categoria, quantidade, minimo, preco, imagem_url: null, unidades_por_caixa, preco_caixa }])
+    .insert([{ cliente_id: _clienteId, codigo, nome, marca, categoria, quantidade, minimo, preco, imagem_url: null, unidades_por_caixa, preco_caixa, codigo_caixa }])
     .select()
     .single();
 
@@ -3503,6 +3531,8 @@ function abrirEdicao(codigo) {
   document.getElementById("edit-unidades-caixa").value = uc;
   document.getElementById("edit-preco-caixa").value = p.preco_caixa||"";
   document.getElementById("edit-preco-caixa-field").style.display = uc ? "block" : "none";
+  document.getElementById("edit-codigo-caixa").value = p.codigo_caixa||"";
+  document.getElementById("edit-codigo-caixa-field").style.display = uc ? "block" : "none";
   // Carregar imagem atual
   const foto = FOTOS[codigo] || "";
   document.getElementById("edit-imagem-url").value = foto;
@@ -3558,6 +3588,7 @@ async function salvarEdicao() {
     imagem_url: novaImagem || null,
     unidades_por_caixa: parseInt(document.getElementById("edit-unidades-caixa").value) || null,
     preco_caixa: parseFloat(document.getElementById("edit-preco-caixa").value) || null,
+    codigo_caixa: document.getElementById("edit-codigo-caixa").value.trim() || null,
   };
 
   const { error } = await db
@@ -3676,6 +3707,14 @@ document.getElementById("pdv-bip-global").addEventListener("keydown", e => {
     const codigo = e.target.value.trim();
     e.target.value = "";
     if (!codigo) return;
+    // Checar se é código de caixa
+    const prodCaixa = estoque.find(x => x.codigo_caixa && String(x.codigo_caixa) === String(codigo));
+    if(prodCaixa){
+      if(prodCaixa.quantidade <= 0){ toast(`${prodCaixa.nome} sem estoque!`, "error"); }
+      else { adicionarAoCarrinho(prodCaixa.codigo, "caixa"); toast(`📦 ${prodCaixa.nome} — caixa adicionada`, "ok"); }
+      setTimeout(() => e.target.focus(), 50);
+      return;
+    }
     const p = estoque.find(x => x.codigo === codigo);
     if (!p) { toast("Produto não encontrado!", "error"); }
     else if (p.quantidade <= 0) { toast(`${p.nome} sem estoque!`, "error"); }
@@ -5497,8 +5536,23 @@ document.getElementById("pdv-bip-input").addEventListener("keydown", e => {
     const codigo = e.target.value.trim();
     e.target.value = "";
     if (!codigo) return;
-    const p = estoque.find(x => x.codigo === codigo);
     const log = document.getElementById("pdv-bip-log");
+    // Checar se é código de caixa
+    const prodCaixa = estoque.find(x => x.codigo_caixa && String(x.codigo_caixa) === String(codigo));
+    if(prodCaixa){
+      if(prodCaixa.quantidade <= 0){
+        log.innerHTML = `<div style="padding:8px 10px;background:var(--yellow-dim);border-radius:6px;margin-bottom:6px;font-size:12px;color:var(--yellow)">⚠️ <b>${prodCaixa.nome}</b> — sem estoque</div>` + log.innerHTML;
+        toast("Produto sem estoque!", "error");
+      } else {
+        adicionarAoCarrinho(prodCaixa.codigo, "caixa");
+        const uc = prodCaixa.unidades_por_caixa || 1;
+        const item = carrinho.find(x => x._chave === prodCaixa.codigo+"_caixa");
+        log.innerHTML = `<div style="padding:8px 10px;background:var(--green-dim);border-radius:6px;margin-bottom:6px;font-size:12px;color:var(--green)">📦 <b>${prodCaixa.nome}</b> — ${item?.qtd || 1} cx (${(item?.qtd||1)*uc} un.) no carrinho</div>` + log.innerHTML;
+      }
+      e.target.focus();
+      return;
+    }
+    const p = estoque.find(x => x.codigo === codigo);
     if (!p) {
       log.innerHTML = `<div style="padding:8px 10px;background:var(--red-dim);border-radius:6px;margin-bottom:6px;font-size:12px;color:var(--red)">❌ Código <b>${codigo}</b> não encontrado</div>` + log.innerHTML;
       toast("Produto não encontrado!", "error");
@@ -5507,7 +5561,7 @@ document.getElementById("pdv-bip-input").addEventListener("keydown", e => {
       toast("Produto sem estoque!", "error");
     } else {
       adicionarAoCarrinho(codigo);
-      const item = carrinho.find(x => x.codigo === codigo);
+      const item = carrinho.find(x => x._chave === codigo || x.codigo === codigo);
       log.innerHTML = `<div style="padding:8px 10px;background:var(--green-dim);border-radius:6px;margin-bottom:6px;font-size:12px;color:var(--green)">✅ <b>${p.nome}</b> — ${item?.qtd || 1} un. no carrinho</div>` + log.innerHTML;
     }
     e.target.focus();
@@ -5695,12 +5749,14 @@ async function adicionarItemMesaAvulso(desc, preco, qtd) {
 function togglePrecoCaixaCM(){
   const v=document.getElementById("cm-unidades-caixa").value;
   document.getElementById("cm-preco-caixa-field").style.display=v?"block":"none";
+  document.getElementById("cm-codigo-caixa-field").style.display=v?"block":"none";
 }
 // Expor toggle para edição também
 document.addEventListener("DOMContentLoaded",function(){
   const el=document.getElementById("edit-unidades-caixa");
   if(el) el.addEventListener("input",function(){
     document.getElementById("edit-preco-caixa-field").style.display=this.value?"block":"none";
+    document.getElementById("edit-codigo-caixa-field").style.display=this.value?"block":"none";
   });
 });
 </script>
