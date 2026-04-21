@@ -634,6 +634,10 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Relatório
     </div>
+    <div class="nav-item" id="nav-financeiro" onclick="nav('financeiro')" style="display:none">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Financeiro
+    </div>
     <div class="nav-item" id="nav-configuracoes" onclick="nav('configuracoes')" style="display:none">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Configurações
@@ -1147,6 +1151,75 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
     </div>
 
 
+
+  <!-- ══ FINANCEIRO ══ -->
+    <div class="page-view" id="view-financeiro">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Financeiro</div>
+          <div class="page-subtitle" id="financeiro-subtitle">Resumo financeiro mensal</div>
+        </div>
+        <div class="page-actions">
+          <select id="fin-mes" class="form-input" style="width:auto;padding:7px 12px;font-size:13px" onchange="renderFinanceiro()">
+          </select>
+          <select id="fin-ano" class="form-input" style="width:auto;padding:7px 12px;font-size:13px" onchange="renderFinanceiro()">
+          </select>
+        </div>
+      </div>
+
+      <!-- KPIs principais -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px">
+        <div style="background:linear-gradient(135deg,#0a0a0a,#283141);border-radius:12px;padding:20px 22px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">
+          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">💰 Faturamento do Mês</div>
+          <div id="fin-faturamento" style="font-size:30px;font-weight:800;color:#fff;line-height:1">R$ 0,00</div>
+          <div id="fin-fat-meta" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px">—</div>
+        </div>
+        <div style="background:#fff1f1;border:1px solid #fecaca;border-radius:12px;padding:20px 22px">
+          <div style="font-size:11px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📤 Total de Despesas</div>
+          <div id="fin-despesas" style="font-size:30px;font-weight:800;color:var(--red);line-height:1">R$ 0,00</div>
+          <div id="fin-desp-meta" style="font-size:11px;color:#f87171;margin-top:6px">—</div>
+        </div>
+        <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:20px 22px">
+          <div style="font-size:11px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📈 Lucro Líquido</div>
+          <div id="fin-lucro" style="font-size:30px;font-weight:800;color:var(--green);line-height:1">R$ 0,00</div>
+          <div id="fin-lucro-meta" style="font-size:11px;color:#34d399;margin-top:6px">—</div>
+        </div>
+      </div>
+
+      <!-- Gráfico de barras + breakdown formas de pagamento -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Evolução dos Últimos 6 Meses</div>
+            <div class="chart-sub">Faturamento × Despesas × Lucro</div>
+          </div>
+          <div class="chart-body">
+            <div style="position:relative;height:240px">
+              <canvas id="fin-chart-evolucao"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Faturamento por Forma</div>
+            <div class="chart-sub">No mês selecionado</div>
+          </div>
+          <div class="chart-body" id="fin-formas-lista" style="padding:12px 16px">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de despesas do mês -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Despesas do Mês</div>
+          <div id="fin-desp-count" class="card-meta">—</div>
+        </div>
+        <div id="fin-despesas-lista" style="padding:0 18px 12px;max-height:400px;overflow-y:auto">
+          <div style="padding:20px 0;text-align:center;font-size:13px;color:var(--text3)">Selecione um mês para ver as despesas.</div>
+        </div>
+      </div>
+    </div>
 
   <!-- ══ FIADO ══ -->
     <div class="page-view" id="view-fiado">
@@ -1955,6 +2028,17 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
         <label class="form-label">Descrição <span style="color:var(--red)">*</span></label>
         <input class="form-input" type="text" id="movimento-descricao" placeholder="Ex: Pagamento fornecedor, Retirada dono...">
       </div>
+      <div class="form-field" id="movimento-categoria-field" style="display:none">
+        <label class="form-label">Categoria</label>
+        <select class="form-input" id="movimento-categoria">
+          <option value="Fornecedor">Fornecedor</option>
+          <option value="Aluguel">Aluguel</option>
+          <option value="Funcionário">Funcionário</option>
+          <option value="Retirada do Dono">Retirada do Dono</option>
+          <option value="Manutenção">Manutenção</option>
+          <option value="Outro" selected>Outro</option>
+        </select>
+      </div>
     </div>
     <div class="edit-modal-footer">
       <button class="btn btn-secondary" onclick="fecharMovimento()">Cancelar</button>
@@ -2154,7 +2238,7 @@ function labelStatus(s){return s==="ok"?"Em estoque":s==="baixo"?"Estoque baixo"
 function topVendidos(){const map={};historico.filter(h=>h.tipo==="saida").forEach(h=>{map[h.produto]=(map[h.produto]||0)+h.qtd;});return Object.entries(map).sort((a,b)=>b[1]-a[1]);}
 function topVendidosPeriodo(lista){const map={};lista.filter(h=>h.tipo==="saida").forEach(h=>{map[h.produto]=(map[h.produto]||0)+h.qtd;});return Object.entries(map).sort((a,b)=>b[1]-a[1]);}
 
-const LABELS={"dashboard":"Dashboard","produtos":"Produtos","venda":"PDV / Venda","relatorio":"Relatório Diário","fiado":"Fiado / Contas","combos":"Combos","mesas":"Mesas","caixa":"Caixa","configuracoes":"Configurações"};
+const LABELS={"dashboard":"Dashboard","produtos":"Produtos","venda":"PDV / Venda","relatorio":"Relatório Diário","fiado":"Fiado / Contas","combos":"Combos","mesas":"Mesas","caixa":"Caixa","configuracoes":"Configurações","financeiro":"Financeiro"};
 const ABAS=["venda","combos","mesas","fiado","produtos","dashboard","relatorio","caixa","configuracoes"];
 
 function nav(aba){
@@ -2174,6 +2258,7 @@ function nav(aba){
   if(aba==="fiado"){ carregarFiado(); return; }
   if(aba==="combos"){ carregarCombos(); return; }
   if(aba==="mesas"){ carregarMesas(); return; }
+  if(aba==="financeiro"){ inicializarSeletoresMes(); renderFinanceiro(); return; }
 
 }
 
@@ -3741,6 +3826,7 @@ const ABAS_CONFIG = [
   { key: "dashboard",    label: "Dashboard" },
   { key: "caixa",        label: "Caixa" },
   { key: "relatorio",    label: "Relatório" },
+  { key: "financeiro",   label: "Financeiro", apenasAdmin: true },
 ];
 
 function aplicarPermissoes(usuario) {
@@ -3750,7 +3836,11 @@ function aplicarPermissoes(usuario) {
   ABAS_CONFIG.forEach(aba => {
     const navEl = document.getElementById("nav-" + aba.key);
     if (!navEl) return;
-    // Admin vê tudo; outros veem só o que foi liberado (ou sempre visível)
+    // apenasAdmin: só aparece para admin, independente de permissões
+    if (aba.apenasAdmin) {
+      navEl.style.display = isAdmin ? "flex" : "none";
+      return;
+    }
     const visivel = isAdmin || aba.sempre || perms[aba.key] === true;
     navEl.style.display = visivel ? "flex" : "none";
   });
@@ -4039,6 +4129,8 @@ function abrirMovimento(tipo) {
   document.getElementById("movimento-confirmar-btn").textContent = isSangria ? "− Registrar Despesa" : "+ Registrar Gorjeta";
   document.getElementById("movimento-valor").value = "";
   document.getElementById("movimento-descricao").value = "";
+  document.getElementById("movimento-categoria-field").style.display = isSangria ? "block" : "none";
+  if (isSangria) document.getElementById("movimento-categoria").value = "Outro";
   document.getElementById("movimento-modal").classList.add("open");
   setTimeout(() => document.getElementById("movimento-valor").focus(), 100);
 }
@@ -4067,6 +4159,20 @@ async function confirmarMovimento() {
       descricao
     }]);
     if (error) { toast("Erro ao registrar movimento.", "error"); console.error(error); return; }
+
+    // Se for sangria, salva também na tabela despesas
+    if (_movimentoTipo === "sangria") {
+      const categoria = document.getElementById("movimento-categoria")?.value || "Outro";
+      await db.from('despesas').insert([{
+        cliente_id: _clienteId,
+        descricao,
+        valor,
+        categoria,
+        data: new Date().toISOString().slice(0,10),
+        caixa_id: _caixaAtual.id
+      }]);
+    }
+
     fecharMovimento();
     toast(`${_movimentoTipo === "sangria" ? "Despesa" : "Gorjeta"} de R$ ${valor.toFixed(2).replace(".",",")} registrado!`, "ok");
   }
@@ -5744,6 +5850,178 @@ async function adicionarItemMesaAvulso(desc, preco, qtd) {
     renderItensMesa();
     toast("Erro ao adicionar item avulso na mesa.", "error");
   }
+}
+
+// ── FINANCEIRO ─────────────────────────────────────────
+let _finChartEvolucao = null;
+
+function inicializarSeletoresMes() {
+  const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const selMes = document.getElementById("fin-mes");
+  const selAno = document.getElementById("fin-ano");
+  if (!selMes || !selAno) return;
+
+  const hoje = new Date();
+  selMes.innerHTML = meses.map((m,i) => `<option value="${i+1}" ${i+1===hoje.getMonth()+1?"selected":""}>${m}</option>`).join("");
+
+  const anoAtual = hoje.getFullYear();
+  selAno.innerHTML = [anoAtual-1, anoAtual].map(a => `<option value="${a}" ${a===anoAtual?"selected":""}>${a}</option>`).join("");
+}
+
+async function renderFinanceiro() {
+  const mes = parseInt(document.getElementById("fin-mes")?.value || new Date().getMonth()+1);
+  const ano = parseInt(document.getElementById("fin-ano")?.value || new Date().getFullYear());
+
+  const nomeMes = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][mes-1];
+  document.getElementById("financeiro-subtitle").textContent = `${nomeMes} de ${ano}`;
+
+  // Datas do mês
+  const inicio = `${ano}-${String(mes).padStart(2,"0")}-01`;
+  const fimDate = new Date(ano, mes, 0);
+  const fim = `${ano}-${String(mes).padStart(2,"0")}-${String(fimDate.getDate()).padStart(2,"0")}`;
+
+  // Buscar caixas do mês (faturamento)
+  const { data: caixas } = await db
+    .from("caixas")
+    .select("total_vendas,total_dinheiro,total_pix,total_cartao,abertura_em")
+    .eq("cliente_id", _clienteId)
+    .eq("status", "fechado")
+    .gte("abertura_em", inicio + "T00:00:00")
+    .lte("abertura_em", fim + "T23:59:59");
+
+  // Buscar despesas da tabela despesas
+  const { data: despesasMes } = await db
+    .from("despesas")
+    .select("*")
+    .eq("cliente_id", _clienteId)
+    .gte("data", inicio)
+    .lte("data", fim)
+    .order("data", { ascending: false });
+
+  const faturamento = (caixas||[]).reduce((a,c) => a + parseFloat(c.total_vendas||0), 0);
+  const totalDespesas = despesasMes.reduce((a,m) => a + parseFloat(m.valor||0), 0);
+  const lucro = faturamento - totalDespesas;
+  const margem = faturamento > 0 ? ((lucro/faturamento)*100).toFixed(1) : "0.0";
+
+  const fmt = v => "R$ " + v.toFixed(2).replace(".",",");
+
+  document.getElementById("fin-faturamento").textContent = fmt(faturamento);
+  document.getElementById("fin-fat-meta").textContent = `${(caixas||[]).length} dia(s) com caixa fechado`;
+  document.getElementById("fin-despesas").textContent = fmt(totalDespesas);
+  document.getElementById("fin-desp-meta").textContent = `${despesasMes.length} lançamento(s) no mês`;
+  const lucroEl = document.getElementById("fin-lucro");
+  lucroEl.textContent = fmt(lucro);
+  lucroEl.style.color = lucro >= 0 ? "var(--green)" : "var(--red)";
+  document.getElementById("fin-lucro-meta").textContent = `Margem: ${margem}%`;
+
+  // Breakdown formas de pagamento
+  const totDin = (caixas||[]).reduce((a,c) => a + parseFloat(c.total_dinheiro||0), 0);
+  const totPix = (caixas||[]).reduce((a,c) => a + parseFloat(c.total_pix||0), 0);
+  const totCar = (caixas||[]).reduce((a,c) => a + parseFloat(c.total_cartao||0), 0);
+  const formasEl = document.getElementById("fin-formas-lista");
+  if (formasEl) {
+    const formas = [
+      { label:"💵 Dinheiro", valor: totDin, cor:"#0d7a4e", bg:"#ecfdf5" },
+      { label:"📱 Pix",      valor: totPix, cor:"#0f62fe", bg:"#eff6ff" },
+      { label:"💳 Cartão",   valor: totCar, cor:"#b8892a", bg:"#fdf3dc" },
+    ];
+    formasEl.innerHTML = formas.map(f => {
+      const pct = faturamento > 0 ? ((f.valor/faturamento)*100).toFixed(0) : 0;
+      return `<div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:600;color:var(--text2)">${f.label}</span>
+          <span style="font-size:12px;font-weight:700;color:${f.cor}">${fmt(f.valor)}</span>
+        </div>
+        <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${f.cor};border-radius:3px;transition:width .5s"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">${pct}% do faturamento</div>
+      </div>`;
+    }).join("");
+  }
+
+  // Tabela de despesas
+  const listaEl = document.getElementById("fin-despesas-lista");
+  const countEl = document.getElementById("fin-desp-count");
+  if (countEl) countEl.textContent = `${despesasMes.length} lançamento(s) · Total: ${fmt(totalDespesas)}`;
+  if (listaEl) {
+    if (!despesasMes?.length) {
+      listaEl.innerHTML = '<div style="padding:20px 0;text-align:center;font-size:13px;color:var(--text3)">Nenhuma despesa registrada neste mês.</div>';
+    } else {
+      listaEl.innerHTML = despesasMes.map(m => {
+        const data = new Date(m.data + "T12:00:00").toLocaleDateString("pt-BR");
+        const cat = m.categoria || "Outro";
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${m.descricao}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${data} · <span style="background:var(--surface2);padding:1px 7px;border-radius:4px;font-weight:600">${cat}</span></div>
+          </div>
+          <div style="font-size:14px;font-weight:800;color:var(--red)">− R$ ${parseFloat(m.valor).toFixed(2).replace(".",",")}</div>
+        </div>`;
+      }).join("");
+    }
+  }
+
+  // Gráfico evolução 6 meses
+  await renderFinChartEvolucao(mes, ano);
+}
+
+async function renderFinChartEvolucao(mesAtual, anoAtual) {
+  const labels = [];
+  const dataFat = [], dataDesp = [], dataLucro = [];
+  const mesesNomes = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+  for (let i = 5; i >= 0; i--) {
+    let m = mesAtual - i;
+    let a = anoAtual;
+    if (m <= 0) { m += 12; a -= 1; }
+    labels.push(mesesNomes[m-1] + "/" + String(a).slice(2));
+
+    const inicio = `${a}-${String(m).padStart(2,"0")}-01`;
+    const fimDate = new Date(a, m, 0);
+    const fim = `${a}-${String(m).padStart(2,"0")}-${String(fimDate.getDate()).padStart(2,"0")}`;
+
+    const { data: caixas } = await db
+      .from("caixas").select("id,total_vendas")
+      .eq("cliente_id", _clienteId).eq("status","fechado")
+      .gte("abertura_em", inicio+"T00:00:00").lte("abertura_em", fim+"T23:59:59");
+
+    const fat = (caixas||[]).reduce((a,c) => a+parseFloat(c.total_vendas||0),0);
+
+    const { data: despMes } = await db.from("despesas")
+      .select("valor").eq("cliente_id",_clienteId)
+      .gte("data", inicio).lte("data", fim);
+    const desp = (despMes||[]).reduce((a,m)=>a+parseFloat(m.valor||0),0);
+
+    dataFat.push(parseFloat(fat.toFixed(2)));
+    dataDesp.push(parseFloat(desp.toFixed(2)));
+    dataLucro.push(parseFloat((fat-desp).toFixed(2)));
+  }
+
+  const canvas = document.getElementById("fin-chart-evolucao");
+  if (!canvas) return;
+
+  if (_finChartEvolucao) { _finChartEvolucao.destroy(); _finChartEvolucao = null; }
+
+  _finChartEvolucao = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label:"Faturamento", data:dataFat, backgroundColor:"rgba(15,98,254,0.7)", borderRadius:4 },
+        { label:"Despesas",    data:dataDesp, backgroundColor:"rgba(218,30,40,0.7)", borderRadius:4 },
+        { label:"Lucro",       data:dataLucro, backgroundColor:"rgba(13,122,78,0.7)", borderRadius:4, type:"line", fill:false, borderColor:"#0d7a4e", tension:0.3 },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ font:{size:11}, boxWidth:12 } } },
+      scales:{
+        y:{ ticks:{ callback: v => "R$"+v.toLocaleString("pt-BR") }, grid:{ color:"rgba(0,0,0,0.04)" } },
+        x:{ grid:{ display:false } }
+      }
+    }
+  });
 }
 
 function togglePrecoCaixaCM(){
