@@ -4025,6 +4025,9 @@ function mostrarCaixaFechado() {
 async function mostrarCaixaAberto() {
   document.getElementById("caixa-fechado").style.display = "none";
   document.getElementById("caixa-aberto").style.display = "block";
+
+  // Limpa lista de movimentos para não vazar do caixa anterior
+  document.getElementById("caixa-movimentos-lista").innerHTML = '<div style="padding:12px 0;font-size:13px;color:var(--text3)">Carregando...</div>';
   const abertura = new Date(_caixaAtual.abertura_em);
   document.getElementById("caixa-subtitle").textContent = `Aberto às ${abertura.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})} de ${abertura.toLocaleDateString("pt-BR")}`;
   document.getElementById("caixa-kpi-abertura").textContent = "R$ " + parseFloat(_caixaAtual.valor_abertura||0).toFixed(2).replace(".",",");
@@ -5880,14 +5883,48 @@ async function renderFinanceiro() {
   const fimDate = new Date(ano, mes, 0);
   const fim = `${ano}-${String(mes).padStart(2,"0")}-${String(fimDate.getDate()).padStart(2,"0")}`;
 
-  // Buscar caixas do mês (faturamento)
-  const { data: caixas } = await db
+  // Buscar vendas do mês diretamente da tabela vendas (mais confiável que total_vendas dos caixas)
+  const { data: vendas } = await db
+    .from("vendas")
+    .select("total,forma_pgto,forma_pgto2,valor_pgto1,valor_pgto2,criado_em")
+    .eq("cliente_id", _clienteId)
+    .gte("criado_em", inicio + "T00:00:00")
+    .lte("criado_em", fim + "T23:59:59");
+
+  let faturamento = 0, totDin = 0, totPix = 0, totCar = 0;
+  (vendas || []).forEach(v => {
+    const vt = parseFloat(v.total||0);
+    faturamento += vt;
+    const f1 = (v.forma_pgto||"").toLowerCase();
+    const f2 = (v.forma_pgto2||"").toLowerCase();
+    const v1 = parseFloat(v.valor_pgto1||0);
+    const v2 = parseFloat(v.valor_pgto2||0);
+    const totalPgto = v2 > 0 ? v1 + v2 : v1;
+    if (f2) {
+      if (f1.includes("dinheiro")) totDin += (v1/(totalPgto||1)) * vt;
+      else if (f1.includes("pix")) totPix += (v1/(totalPgto||1)) * vt;
+      else if (f1.includes("cartão")||f1.includes("cartao")) totCar += (v1/(totalPgto||1)) * vt;
+      if (f2.includes("dinheiro")) totDin += (v2/(totalPgto||1)) * vt;
+      else if (f2.includes("pix")) totPix += (v2/(totalPgto||1)) * vt;
+      else if (f2.includes("cartão")||f2.includes("cartao")) totCar += (v2/(totalPgto||1)) * vt;
+    } else {
+      if (f1.includes("dinheiro")) totDin += vt;
+      else if (f1.includes("pix")) totPix += vt;
+      else if (f1.includes("cartão")||f1.includes("cartao")) totCar += vt;
+      else totDin += vt;
+    }
+  });
+
+  // Contar caixas fechados no mês
+  const { data: caixasFechados } = await db
     .from("caixas")
-    .select("total_vendas,total_dinheiro,total_pix,total_cartao,abertura_em")
+    .select("id", { count: "exact" })
     .eq("cliente_id", _clienteId)
     .eq("status", "fechado")
     .gte("abertura_em", inicio + "T00:00:00")
     .lte("abertura_em", fim + "T23:59:59");
+
+  const qtdCaixas = (caixasFechados||[]).length;
 
   // Buscar despesas da tabela despesas
   const { data: despesasMes } = await db
@@ -5898,32 +5935,28 @@ async function renderFinanceiro() {
     .lte("data", fim)
     .order("data", { ascending: false });
 
-  const faturamento = (caixas||[]).reduce((a,c) => a + parseFloat(c.total_vendas||0), 0);
-  const totalDespesas = despesasMes.reduce((a,m) => a + parseFloat(m.valor||0), 0);
+  const totalDespesas = (despesasMes||[]).reduce((a,m) => a + parseFloat(m.valor||0), 0);
   const lucro = faturamento - totalDespesas;
   const margem = faturamento > 0 ? ((lucro/faturamento)*100).toFixed(1) : "0.0";
 
   const fmt = v => "R$ " + v.toFixed(2).replace(".",",");
 
   document.getElementById("fin-faturamento").textContent = fmt(faturamento);
-  document.getElementById("fin-fat-meta").textContent = `${(caixas||[]).length} dia(s) com caixa fechado`;
+  document.getElementById("fin-fat-meta").textContent = `${(vendas||[]).length} venda(s) · ${qtdCaixas} caixa(s) fechado(s)`;
   document.getElementById("fin-despesas").textContent = fmt(totalDespesas);
-  document.getElementById("fin-desp-meta").textContent = `${despesasMes.length} lançamento(s) no mês`;
+  document.getElementById("fin-desp-meta").textContent = `${(despesasMes||[]).length} lançamento(s) no mês`;
   const lucroEl = document.getElementById("fin-lucro");
   lucroEl.textContent = fmt(lucro);
   lucroEl.style.color = lucro >= 0 ? "var(--green)" : "var(--red)";
   document.getElementById("fin-lucro-meta").textContent = `Margem: ${margem}%`;
 
   // Breakdown formas de pagamento
-  const totDin = (caixas||[]).reduce((a,c) => a + parseFloat(c.total_dinheiro||0), 0);
-  const totPix = (caixas||[]).reduce((a,c) => a + parseFloat(c.total_pix||0), 0);
-  const totCar = (caixas||[]).reduce((a,c) => a + parseFloat(c.total_cartao||0), 0);
   const formasEl = document.getElementById("fin-formas-lista");
   if (formasEl) {
     const formas = [
-      { label:"💵 Dinheiro", valor: totDin, cor:"#0d7a4e", bg:"#ecfdf5" },
-      { label:"📱 Pix",      valor: totPix, cor:"#0f62fe", bg:"#eff6ff" },
-      { label:"💳 Cartão",   valor: totCar, cor:"#b8892a", bg:"#fdf3dc" },
+      { label:"💵 Dinheiro", valor: totDin, cor:"#0d7a4e" },
+      { label:"📱 Pix",      valor: totPix, cor:"#0f62fe" },
+      { label:"💳 Cartão",   valor: totCar, cor:"#b8892a" },
     ];
     formasEl.innerHTML = formas.map(f => {
       const pct = faturamento > 0 ? ((f.valor/faturamento)*100).toFixed(0) : 0;
@@ -5943,7 +5976,7 @@ async function renderFinanceiro() {
   // Tabela de despesas
   const listaEl = document.getElementById("fin-despesas-lista");
   const countEl = document.getElementById("fin-desp-count");
-  if (countEl) countEl.textContent = `${despesasMes.length} lançamento(s) · Total: ${fmt(totalDespesas)}`;
+  if (countEl) countEl.textContent = `${(despesasMes||[]).length} lançamento(s) · Total: ${fmt(totalDespesas)}`;
   if (listaEl) {
     if (!despesasMes?.length) {
       listaEl.innerHTML = '<div style="padding:20px 0;text-align:center;font-size:13px;color:var(--text3)">Nenhuma despesa registrada neste mês.</div>';
@@ -5981,12 +6014,12 @@ async function renderFinChartEvolucao(mesAtual, anoAtual) {
     const fimDate = new Date(a, m, 0);
     const fim = `${a}-${String(m).padStart(2,"0")}-${String(fimDate.getDate()).padStart(2,"0")}`;
 
-    const { data: caixas } = await db
-      .from("caixas").select("id,total_vendas")
-      .eq("cliente_id", _clienteId).eq("status","fechado")
-      .gte("abertura_em", inicio+"T00:00:00").lte("abertura_em", fim+"T23:59:59");
+    const { data: vendasMes } = await db
+      .from("vendas").select("total")
+      .eq("cliente_id", _clienteId)
+      .gte("criado_em", inicio+"T00:00:00").lte("criado_em", fim+"T23:59:59");
 
-    const fat = (caixas||[]).reduce((a,c) => a+parseFloat(c.total_vendas||0),0);
+    const fat = (vendasMes||[]).reduce((a,v) => a+parseFloat(v.total||0),0);
 
     const { data: despMes } = await db.from("despesas")
       .select("valor").eq("cliente_id",_clienteId)
