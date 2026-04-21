@@ -2171,7 +2171,7 @@ const FOTOS = {
   "7896062300027":"https://images.openfoodfacts.org/images/products/789/606/230/0027/front_pt.3.400.jpg",
 };
 const EMOJIS    = { Vinho:"🍷", Cerveja:"🍺", Destilado:"🥃", Espumante:"🍾", Licor:"🧴", Outro:"📦" };
-const CAT_CORES = { Cerveja:"#0f62fe", Vinho:"#7c3aed", Destilado:"#ea580c", Espumante:"#0d7a4e", Licor:"#d97706", Outro:"#6b7280" };
+const CAT_CORES = { "Cerveja":"#f59e0b", "Vinho":"#a72c68", "Refrigerante":"#3b82f6", "Suco":"#f97316", "Destilado":"#8b5cf6", "Espumante":"#ec4899", "Licor":"#a855f7", "Energético":"#10b981", "Energetico":"#10b981", "Doces":"#f472b6", "Cigarros":"#6b7280", "Tabacaria":"#78552d", "Avulso":"#14b8a6", "Outro":"#64748b" };
 
 let estoque = [];
 
@@ -2444,27 +2444,56 @@ function buscarProdutoFiado() {
   const res = document.getElementById("fl-busca-resultado");
   if (!q) { res.innerHTML = ""; return; }
   const lista = estoque.filter(p => p.nome.toLowerCase().includes(q) || (p.codigo||"").includes(q)).slice(0,8);
-  res.innerHTML = lista.map(p => `
-    <div onclick="flAdicionarProdutoPendente('${p.id}')" style="padding:9px 12px;cursor:pointer;border-radius:6px;margin-bottom:4px;background:var(--surface2);font-size:13px;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--gold-dim,#fdf3dc)'" onmouseout="this.style.background='var(--surface2)'">
+  if (!lista.length) { res.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px">Nenhum produto encontrado.</div>'; return; }
+  res.innerHTML = lista.map(p => {
+    const uc = p.unidades_por_caixa || null;
+    const estoqueInfo = uc ? `${p.quantidade} un. (${Math.floor(p.quantidade/uc)} cx)` : `${p.quantidade} un.`;
+    const precoAvulso = `R$ ${parseFloat(p.preco||0).toFixed(2).replace(".",",")}`;
+    const precoCaixaLabel = uc && p.preco_caixa ? `R$ ${parseFloat(p.preco_caixa).toFixed(2).replace(".",",")}` : precoAvulso;
+    if (uc) {
+      return `<div style="padding:9px 12px;border-radius:6px;margin-bottom:4px;background:var(--surface2);font-size:13px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-weight:600;color:var(--text)">${p.nome}</span>
+          <span style="font-size:11px;color:var(--text3)">${estoqueInfo}</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button type="button" onclick="flAdicionarProdutoPendente('${p.id}','avulso')" style="flex:1;font-size:11px;padding:5px 0;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;font-weight:600">🍺 Avulso — ${precoAvulso}</button>
+          <button type="button" onclick="flAdicionarProdutoPendente('${p.id}','caixa')" style="flex:1;font-size:11px;padding:5px 0;border-radius:5px;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;font-weight:600">📦 Caixa — ${precoCaixaLabel}</button>
+        </div>
+      </div>`;
+    }
+    return `<div onclick="flAdicionarProdutoPendente('${p.id}')" style="padding:9px 12px;cursor:pointer;border-radius:6px;margin-bottom:4px;background:var(--surface2);font-size:13px;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--gold-dim,#fdf3dc)'" onmouseout="this.style.background='var(--surface2)'">
       <span>${p.nome}</span>
-      <span style="font-weight:700;color:var(--gold)">R$ ${parseFloat(p.preco||0).toFixed(2).replace(".",",")} <span style="font-weight:400;color:var(--text3)">(${p.quantidade} un.)</span></span>
-    </div>`).join("") || '<div style="font-size:12px;color:var(--text3);padding:8px">Nenhum produto encontrado.</div>';
+      <span style="font-weight:700;color:var(--gold)">${precoAvulso} <span style="font-weight:400;color:var(--text3)">(${estoqueInfo})</span></span>
+    </div>`;
+  }).join("");
 }
 
-function flAdicionarProdutoPendente(produtoId) {
+function flAdicionarProdutoPendente(produtoId, tipoVenda) {
   const p = estoque.find(x => x.id === produtoId);
   if (!p) return;
+  const uc = p.unidades_por_caixa || null;
+  const ehCaixa = tipoVenda === "caixa" && uc;
+  const qtdUnidades = ehCaixa ? uc : 1;
+  const preco = ehCaixa && p.preco_caixa ? parseFloat(p.preco_caixa) : parseFloat(p.preco) || 0;
+  const nome = ehCaixa ? `${p.nome} (Caixa)` : p.nome;
+  const chave = ehCaixa ? produtoId + "_caixa" : produtoId;
+
   window._flPendente = window._flPendente || [];
-  const ex = window._flPendente.find(x => x.produtoId === produtoId);
+  const ex = window._flPendente.find(x => x._chave === chave);
   if (ex) {
+    const novaQtdTotal = (ex.qtd + 1) * ex._qtdUn;
     const cap = p.quantidade > 0 ? p.quantidade : 999;
-    if (ex.qtd >= cap) { toast(p.quantidade <= 0 ? "Sem estoque." : "Quantidade máxima no estoque.", "error"); return; }
+    if (novaQtdTotal > cap) { toast(p.quantidade <= 0 ? "Sem estoque." : "Quantidade máxima no estoque.", "error"); return; }
     ex.qtd++;
   } else {
+    if (ehCaixa && qtdUnidades > p.quantidade) { toast("Estoque insuficiente para uma caixa!", "error"); return; }
     window._flPendente.push({
+      _chave: chave,
+      _qtdUn: qtdUnidades,
       produtoId: p.id,
-      nome: p.nome,
-      preco: parseFloat(p.preco) || 0,
+      nome,
+      preco,
       qtd: 1
     });
   }
@@ -2505,9 +2534,9 @@ function flAjustarPendente(i, d) {
   window._flPendente = window._flPendente || [];
   const it = window._flPendente[i];
   if (!it) return;
-  // Itens avulsos (sem produtoId) não têm limite de estoque.
   const p = it.produtoId ? estoque.find(x => x.id === it.produtoId) : null;
-  const cap = it.produtoId ? (p && p.quantidade > 0 ? p.quantidade : 999) : 9999;
+  const qtdUn = it._qtdUn || 1;
+  const cap = it.produtoId && p && p.quantidade > 0 ? Math.floor(p.quantidade / qtdUn) : 9999;
   it.qtd = Math.max(1, Math.min(it.qtd + d, cap));
   renderFlPendente();
 }
@@ -2518,15 +2547,16 @@ function flRemoverPendente(i) {
   renderFlPendente();
 }
 
-async function lancarUmFiadoNoBanco(id, nome, precoUnit, qtd) {
+async function lancarUmFiadoNoBanco(id, nome, precoUnit, qtd, qtdUn) {
+  const unidadesPorItem = qtdUn || 1;
+  const totalUnidades = qtd * unidadesPorItem;
   const valor = precoUnit * qtd;
   const desc = `${nome} x${qtd}`;
-  const now = new Date();
   const data = _dataHoje();
   const hora = _horaAgora();
   const p = estoque.find(x => x.id === id);
   if (p && p.quantidade > 0) {
-    p.quantidade = Math.max(0, p.quantidade - qtd);
+    p.quantidade = Math.max(0, p.quantidade - totalUnidades);
     await db.from("produtos").update({ quantidade: p.quantidade }).eq("id", p.id);
   }
   const { data: lanc, error } = await db
@@ -2561,19 +2591,22 @@ async function flLancarPendente() {
   const pend = [...window._flPendente];
   if (!pend.length) { toast("Adicione produtos à lista.", "error"); return; }
   for (const it of pend) {
-    if (!it.produtoId) continue; // avulso: não valida estoque
+    if (!it.produtoId) continue;
     const p = estoque.find(x => x.id === it.produtoId);
+    const qtdUn = it._qtdUn || 1;
+    const totalUn = it.qtd * qtdUn;
     const estoqueQtd = p ? p.quantidade : 0;
     if (estoqueQtd <= 0) {
       if (!confirm(`${it.nome} está sem estoque. Lançar ${it.qtd} un. mesmo assim?`)) return;
-    } else if (it.qtd > estoqueQtd) {
-      if (!confirm(`Estoque disponível: ${estoqueQtd} un. Lançar ${it.qtd} mesmo assim?`)) return;
+    } else if (totalUn > estoqueQtd) {
+      if (!confirm(`Estoque disponível: ${estoqueQtd} un. Lançar ${totalUn} mesmo assim?`)) return;
     }
   }
   try {
     for (const it of pend) {
+      const qtdUn = it._qtdUn || 1;
       if (!it.produtoId) await lancarFiadoAvulsoNoBanco(it.nome, it.preco, it.qtd);
-      else await lancarUmFiadoNoBanco(it.produtoId, it.nome, it.preco, it.qtd);
+      else await lancarUmFiadoNoBanco(it.produtoId, it.nome, it.preco, it.qtd, qtdUn);
     }
   } catch (e) {
     toast("Erro ao lançar no fiado.", "error");
