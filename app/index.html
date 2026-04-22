@@ -5948,17 +5948,6 @@ async function renderFinanceiro() {
     }
   });
 
-  // Contar caixas fechados no mês
-  const { data: caixasFechados } = await db
-    .from("caixas")
-    .select("id", { count: "exact" })
-    .eq("cliente_id", _clienteId)
-    .eq("status", "fechado")
-    .gte("abertura_em", inicio + "T00:00:00")
-    .lte("abertura_em", fim + "T23:59:59");
-
-  const qtdCaixas = (caixasFechados||[]).length;
-
   // Buscar despesas da tabela despesas
   const { data: despesasMes } = await db
     .from("despesas")
@@ -5975,7 +5964,7 @@ async function renderFinanceiro() {
   const fmt = v => "R$ " + v.toFixed(2).replace(".",",");
 
   document.getElementById("fin-faturamento").textContent = fmt(faturamento);
-  document.getElementById("fin-fat-meta").textContent = `${(vendas||[]).length} venda(s) · ${qtdCaixas} caixa(s) fechado(s)`;
+  document.getElementById("fin-fat-meta").textContent = `${(vendas||[]).length} venda(s) no mês`;
   document.getElementById("fin-despesas").textContent = fmt(totalDespesas);
   document.getElementById("fin-desp-meta").textContent = `${(despesasMes||[]).length} lançamento(s) no mês`;
   const lucroEl = document.getElementById("fin-lucro");
