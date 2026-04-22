@@ -557,8 +557,8 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
 .mb16 { margin-bottom:16px; }
 
 @media (max-width:1100px) { .charts-row { grid-template-columns:1fr; } }
-@media (max-width:900px)  { .kpi-row { grid-template-columns:1fr 1fr; } .rel-kpis { grid-template-columns:1fr 1fr; } .sidebar { width:200px; } .main { margin-left:200px; } }
-@media (max-width:640px)  { .sidebar { display:none; } .main { margin-left:0; } .kpi-row { grid-template-columns:1fr 1fr; } .page { padding:16px; } }
+@media (max-width:900px)  { .kpi-row { grid-template-columns:1fr 1fr; } .sidebar { width:200px; } .main { margin-left:200px; } }
+@media (max-width:640px)  { .sidebar { display:none; } .main { margin-left:0; } .kpi-row { grid-template-columns:1fr; } .page { padding:16px; } }
 </style>
 </head>
 <body>
@@ -680,7 +680,7 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       </div>
 
       <!-- KPIs -->
-      <div class="kpi-row">
+      <div class="kpi-row" style="grid-template-columns:repeat(2,1fr)">
         <div class="kpi-card blue-card">
           <div class="kpi-text">
             <div class="kpi-label">Total de Produtos</div>
@@ -699,16 +699,6 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
           </div>
           <div class="kpi-icon green">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-          </div>
-        </div>
-        <div class="kpi-card red-card">
-          <div class="kpi-text">
-            <div class="kpi-label">Estoque Baixo</div>
-            <div class="kpi-value" id="kpi-alerta">0</div>
-            <div class="kpi-meta">precisam de reposição</div>
-          </div>
-          <div class="kpi-icon red">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10.29 3.86-8.27 14.3A2 2 0 0 0 3.73 21h16.54a2 2 0 0 0 1.71-3.01L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </div>
         </div>
       </div>
@@ -737,11 +727,6 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- ALERTAS DE ESTOQUE -->
-      <div class="card" id="dash-alertas-card">
-        <div id="dash-alertas-lista"></div>
       </div>
 
     </div>
@@ -1127,26 +1112,23 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
           </div>
         </div>
       </div>
-      <div class="rel-kpis" id="relatorio-kpis"></div>
-      <!-- VENDAS POR FORMA DE PAGAMENTO -->
-      <div class="card mb16">
-        <div class="card-header">
-          <div class="card-title">💰 Vendas por Forma de Pagamento</div>
-          <div class="card-meta" id="rel-total-geral">—</div>
+      <div class="rel-kpis" style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:16px">
+        <div class="rel-card">
+          <div class="rel-card-label">Unidades Vendidas</div>
+          <div class="rel-card-value" id="rel-unidades-vendidas" style="color:var(--green)">0</div>
+          <div class="rel-card-sub">no período</div>
         </div>
-        <div id="rel-pgto-lista"></div>
       </div>
-
-      <div class="card mb16">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-title">⚠️ Produtos para Repor</div></div>
+        <div id="relatorio-alertas"></div>
+      </div>
+      <div class="card">
         <div class="card-header">
           <div class="card-title">📋 Vendas do Período</div>
           <div class="card-meta" id="rel-vendas-count">—</div>
         </div>
         <div id="rel-vendas-lista"></div>
-      </div>
-      <div class="card">
-        <div class="card-header"><div class="card-title">⚠️ Produtos para Repor</div></div>
-        <div id="relatorio-alertas"></div>
       </div>
     </div>
 
@@ -2547,6 +2529,36 @@ function flRemoverPendente(i) {
   renderFlPendente();
 }
 
+// Registra lançamento de fiado no caixa (movimentação) e no financeiro (tabela vendas)
+async function registrarFiadoNoCaixa(descricao, valor) {
+  const nomeCliente = clienteAtual?.nome || "Fiado";
+
+  // 1. Registrar no caixa como movimentação tipo "fiado" (se houver caixa aberto)
+  if (_caixaAtual) {
+    await db.from('caixa_movimentos').insert([{
+      caixa_id: _caixaAtual.id,
+      cliente_id: _clienteId,
+      tipo: 'fiado',
+      valor,
+      descricao: `[Fiado] ${nomeCliente} — ${descricao}`
+    }]);
+  }
+
+  // 2. Registrar na tabela vendas para aparecer no financeiro
+  await db.from('vendas').insert([{
+    cliente_id: _clienteId,
+    caixa_id: _caixaAtual?.id || null,
+    produto: descricao,
+    codigo: 'FIADO',
+    qtd: 1,
+    preco: valor,
+    total: valor,
+    forma_pgto: 'Fiado',
+    valor_pgto1: valor,
+    obs: `Fiado — ${nomeCliente}`
+  }]);
+}
+
 async function lancarUmFiadoNoBanco(id, nome, precoUnit, qtd, qtdUn) {
   const unidadesPorItem = qtdUn || 1;
   const totalUnidades = qtd * unidadesPorItem;
@@ -2565,6 +2577,7 @@ async function lancarUmFiadoNoBanco(id, nome, precoUnit, qtd, qtdUn) {
     .select().single();
   if (error) throw error;
   clienteAtual.lancamentos.push(lanc);
+  await registrarFiadoNoCaixa(`${desc}`, valor);
   window._flItensLancados = window._flItensLancados || [];
   window._flItensLancados.push({ desc, valor });
 }
@@ -2581,6 +2594,7 @@ async function lancarFiadoAvulsoNoBanco(nome, precoUnit, qtd) {
     .select().single();
   if (error) throw error;
   clienteAtual.lancamentos.push(lanc);
+  await registrarFiadoNoCaixa(desc, valor);
   window._flItensLancados = window._flItensLancados || [];
   window._flItensLancados.push({ desc, valor });
 }
@@ -2619,6 +2633,7 @@ async function flLancarPendente() {
   renderDetalhe();
   renderFiado();
   renderPDVGrid();
+  if (_caixaAtual) await renderMovimentos();
   toast("Itens lançados na conta!", "ok");
   setTimeout(() => document.getElementById("fl-busca-produto").focus(), 50);
 }
@@ -2727,41 +2742,14 @@ async function excluirCliente() {
 
 function renderDashboard(){
   const total=estoque.length, units=estoque.reduce((a,b)=>a+b.quantidade,0);
-  const alerta=estoque.filter(p=>statusQtd(p.quantidade,p.minimo)!=="ok").length;
   document.getElementById("kpi-total").textContent=total;
   document.getElementById("kpi-units").textContent=units;
-  document.getElementById("kpi-alerta").textContent=alerta;
   const hoje=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
   document.getElementById("dash-data").textContent=hoje.charAt(0).toUpperCase()+hoje.slice(1);
-  renderChartBarras(); renderChartRosca(); renderDashAlertas();
+  renderChartBarras(); renderChartRosca();
 }
 
-function renderDashAlertas(){
-  const alertas=estoque.filter(p=>statusQtd(p.quantidade,p.minimo)!=="ok")
-    .sort((a,b)=>{
-      const ord={zerado:0,baixo:1};
-      return ord[statusQtd(a.quantidade,a.minimo)]-ord[statusQtd(b.quantidade,b.minimo)];
-    });
-  const titulo='<div class="alerta-titulo"><span class="alerta-titulo-icon">⚠</span><span class="alerta-titulo-text">Alertas de Estoque Baixo</span></div>';
-  document.getElementById("dash-alertas-lista").innerHTML=alertas.length===0
-    ? titulo+'<div class="empty-state" style="padding:18px">✅ Todos os produtos estão com estoque adequado.</div>'
-    : titulo+alertas.map(p=>{
-        const st=statusQtd(p.quantidade,p.minimo);
-        const repor = p.minimo - p.quantidade;
-        const msg = st === "zerado"
-          ? "Sem estoque"
-          : `${p.quantidade} unidades restantes`;
-        return `<div class="alerta-row">
-          <div class="alerta-info">
-            <div class="alerta-nome">${p.nome}</div>
-            <div class="alerta-sub">${p.marca}</div>
-          </div>
-          <div class="alerta-right">
-            <span class="alerta-qtd ${st}">${msg}</span>
-          </div>
-        </div>`;
-      }).join("");
-}
+function renderDashAlertas(){ /* removido do dashboard */ }
 
 function renderChartBarras(){
   const map={};
@@ -2919,36 +2907,14 @@ function renderRelatorio(){
   const hoje = new Date().toLocaleDateString("pt-BR",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
   document.getElementById("relatorio-data").textContent = hoje.charAt(0).toUpperCase()+hoje.slice(1)+" · "+labelPeriodo;
 
-  const saidas  = porPeriodo.filter(h=>h.tipo==="saida").reduce((a,b)=>a+b.qtd,0);
-  const alertas = estoque.filter(p=>statusQtd(p.quantidade,p.minimo)!=="ok").length;
-
-  // Vendas por forma de pagamento
   function extrairPgto(obs){ if(!obs)return null; const o=obs.toLowerCase(); if(o.includes("dinheiro"))return"dinheiro"; if(o.includes("pix"))return"pix"; if(o.includes("cartão")||o.includes("cartao")||o.includes("débito")||o.includes("crédito"))return"cartao"; return null; }
   function extrairValor(h){ const m=h.obs&&h.obs.match(/R\$ ([\d.,]+)/); if(m) return parseFloat(m[1].replace(",",".")); return (h.preco||0)*(h.qtd||1); }
 
   const vendasPDV = porPeriodo.filter(h=>h.tipo==="saida"&&h.obs&&h.obs.includes("PDV"));
-  const totalGeral = vendasPDV.reduce((a,h)=>a+extrairValor(h),0);
-  const pgtoMap = { dinheiro:{label:"💵 Dinheiro",total:0,qtd:0}, pix:{label:"📱 Pix",total:0,qtd:0}, cartao:{label:"💳 Cartão",total:0,qtd:0} };
-  vendasPDV.forEach(h=>{ const tipo=extrairPgto(h.obs); if(tipo&&pgtoMap[tipo]){pgtoMap[tipo].total+=extrairValor(h);pgtoMap[tipo].qtd+=h.qtd;} });
-
-  const elTotalGeral = document.getElementById("rel-total-geral");
-  if(elTotalGeral) elTotalGeral.textContent = "Total: R$ "+totalGeral.toFixed(2).replace(".",",");
-
-  const elPgto = document.getElementById("rel-pgto-lista");
-  if(elPgto) elPgto.innerHTML = Object.values(pgtoMap).map(p=>`
-    <div class="alerta-row">
-      <div class="alerta-info"><div class="alerta-nome">${p.label}</div><div class="alerta-sub">${p.qtd} unidade${p.qtd!==1?"s":""} vendida${p.qtd!==1?"s":""}</div></div>
-      <div class="alerta-right"><div style="font-size:18px;font-weight:800;color:var(--green)">R$ ${p.total.toFixed(2).replace(".",",")}</div></div>
-    </div>`).join("");
-
-  document.getElementById("relatorio-kpis").innerHTML=`
-    <div class="rel-card"><div class="rel-card-label">Unidades Vendidas</div><div class="rel-card-value" style="color:var(--green)">${saidas}</div><div class="rel-card-sub">no período</div></div>
-    <div class="rel-card"><div class="rel-card-label">Total em Vendas</div><div class="rel-card-value" style="color:var(--gold)">R$ ${totalGeral.toFixed(2).replace(".",",")}</div><div class="rel-card-sub">pelo PDV</div></div>
-    <div class="rel-card"><div class="rel-card-label">Alertas</div><div class="rel-card-value" style="color:var(--yellow)">${alertas}</div><div class="rel-card-sub">para repor</div></div>`;
-
-  // relatorio-top removido
-
-  // Lista de vendas individuais com data, hora e forma de pagamento
+  const totalUnidades = vendasPDV.reduce((a,h) => a + (h.qtd||0), 0);
+  const elUnidades = document.getElementById("rel-unidades-vendidas");
+  if (elUnidades) elUnidades.textContent = totalUnidades;
+  // Lista de vendas individuais
   const elVendasLista = document.getElementById('rel-vendas-lista');
   const elVendasCount = document.getElementById('rel-vendas-count');
   if (elVendasLista) {
@@ -3765,8 +3731,6 @@ function fecharLeitorBip() {
 }
 function abrirScanner(){ abrirLeitorBip(); }
 function fecharScanner(){ fecharLeitorBip(); }
-function pararQuagga(){}
-function iniciarQuagga(){}
 
 // ── DIGITAR CÓDIGO ─────────────────────────────────────
 function abrirDigitarCodigo() {
@@ -4076,6 +4040,8 @@ async function mostrarCaixaAberto() {
 
   let totalDinheiro = 0, totalPix = 0, totalCartao = 0;
   (vendas || []).forEach(v => {
+    // Ignorar vendas de fiado no cálculo de totais do caixa
+    if ((v.forma_pgto||"").toLowerCase() === "fiado") return;
     const f1 = (v.forma_pgto||"").toLowerCase();
     const f2 = (v.forma_pgto2||"").toLowerCase();
     const vt = parseFloat(v.total||0);
@@ -4106,32 +4072,9 @@ async function mostrarCaixaAberto() {
   document.getElementById("caixa-kpi-total").textContent = "R$ " + totalVendas.toFixed(2).replace(".",",");
   document.getElementById("caixa-kpi-esperado").textContent = "R$ " + esperado.toFixed(2).replace(".",",");
 
-  // Lista de vendas agrupadas
-  const lista = document.getElementById("caixa-vendas-lista");
-  if (!vendas?.length) {
-    lista.innerHTML = '<div style="padding:12px 0;font-size:13px;color:var(--text3)">Nenhuma venda registrada ainda.</div>';
-  } else {
-    const grupos = {};
-    vendas.forEach(v => {
-      const key = (v.criado_em||"").slice(0,16) + "_" + (v.obs||"");
-      if (!grupos[key]) grupos[key] = { itens:[], total:0, hora:new Date(v.criado_em).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}), forma:v.obs||"—" };
-      grupos[key].itens.push(v);
-      grupos[key].total += parseFloat(v.total||0);
-    });
-    lista.innerHTML = Object.values(grupos).map(g => `
-      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:12px;color:var(--text3)">${g.hora} · ${g.forma}</span>
-          <span style="font-size:14px;font-weight:800;color:var(--green)">R$ ${g.total.toFixed(2).replace(".",",")}</span>
-        </div>
-        ${g.itens.map(i => `<div style="font-size:12px;color:var(--text2);padding-left:8px">${i.qtd}x ${i.produto}</div>`).join("")}
-      </div>`).join("");
-  }
-
   document.getElementById("caixa-valor-contado").value = "";
   document.getElementById("caixa-diferenca-box").style.display = "none";
   window._caixaTotais = { totalDinheiro, totalPix, totalCartao, totalVendas, esperado };
-  // Carregar movimentos
   await renderMovimentos();
 }
 
@@ -4248,19 +4191,23 @@ async function renderMovimentos() {
   }
   lista.innerHTML = movs.map(m => {
     const isSangria = m.tipo === "sangria";
-    const cor = isSangria ? "var(--red)" : "var(--green)";
-    const bg = isSangria ? "#fff1f1" : "#ecfdf5";
-    const borda = isSangria ? "#fecaca" : "#a7f3d0";
+    const isFiado   = m.tipo === "fiado";
+    const cor   = isSangria ? "var(--red)"    : isFiado ? "var(--blue)"   : "var(--green)";
+    const bg    = isSangria ? "#fff1f1"       : isFiado ? "#eff6ff"       : "#ecfdf5";
+    const borda = isSangria ? "#fecaca"       : isFiado ? "#bfdbfe"       : "#a7f3d0";
+    const label = isSangria ? "📤 Despesa"    : isFiado ? "🤝 Fiado"      : "📥 Gorjeta";
+    const editBtns = isFiado ? "" : `
+        <button onclick="editarMovimento('${m.id}')" style="background:none;border:1px solid ${borda};color:${cor};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">✏️</button>
+        <button onclick="excluirMovimento('${m.id}')" style="background:none;border:1px solid ${borda};color:${cor};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">✕</button>`;
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;background:${bg};border:1px solid ${borda};border-radius:8px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:700;color:${cor};margin-bottom:2px">${isSangria?"📤 Despesa":"📥 Gorjeta"}</div>
+        <div style="font-size:12px;font-weight:700;color:${cor};margin-bottom:2px">${label}</div>
         <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.descricao}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(m.criado_em).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:10px">
         <span style="font-size:15px;font-weight:800;color:${cor}">R$ ${parseFloat(m.valor).toFixed(2).replace(".",",")}</span>
-        <button onclick="editarMovimento('${m.id}')" style="background:none;border:1px solid ${borda};color:${cor};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">✏️</button>
-        <button onclick="excluirMovimento('${m.id}')" style="background:none;border:1px solid ${borda};color:${cor};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">✕</button>
+        ${editBtns}
       </div>
     </div>`;
   }).join("");
@@ -4367,6 +4314,7 @@ function fecharBipFiado() {
   if (_fiadoBipTotal > 0) {
     renderDetalhe();
     renderFiado();
+    if (_caixaAtual) renderMovimentos();
   }
 }
 
@@ -4410,6 +4358,7 @@ document.getElementById("fiado-bip-input").addEventListener("keydown", async e =
   }
 
   clienteAtual.lancamentos.push(lanc);
+  await registrarFiadoNoCaixa(desc, valor);
   _fiadoBipTotal += valor;
   document.getElementById("fiado-bip-total").textContent = `Total: R$ ${_fiadoBipTotal.toFixed(2).replace(".",",")}`;
   log.innerHTML = `<div style="padding:8px 10px;background:var(--green-dim);border-radius:6px;margin-bottom:6px;font-size:12px;color:var(--green)">✅ <b>${p.nome}</b> — R$ ${valor.toFixed(2).replace(".",",")}</div>` + log.innerHTML;
@@ -5924,11 +5873,13 @@ async function renderFinanceiro() {
     .gte("criado_em", inicio + "T00:00:00")
     .lte("criado_em", fim + "T23:59:59");
 
-  let faturamento = 0, totDin = 0, totPix = 0, totCar = 0;
+  let faturamento = 0, totDin = 0, totPix = 0, totCar = 0, totFiado = 0;
   (vendas || []).forEach(v => {
     const vt = parseFloat(v.total||0);
     faturamento += vt;
     const f1 = (v.forma_pgto||"").toLowerCase();
+    // Fiado: contabiliza no faturamento mas em categoria própria
+    if (f1 === "fiado") { totFiado += vt; return; }
     const f2 = (v.forma_pgto2||"").toLowerCase();
     const v1 = parseFloat(v.valor_pgto1||0);
     const v2 = parseFloat(v.valor_pgto2||0);
@@ -5976,10 +5927,11 @@ async function renderFinanceiro() {
   const formasEl = document.getElementById("fin-formas-lista");
   if (formasEl) {
     const formas = [
-      { label:"💵 Dinheiro", valor: totDin, cor:"#0d7a4e" },
-      { label:"📱 Pix",      valor: totPix, cor:"#0f62fe" },
-      { label:"💳 Cartão",   valor: totCar, cor:"#b8892a" },
-    ];
+      { label:"💵 Dinheiro", valor: totDin,   cor:"#0d7a4e" },
+      { label:"📱 Pix",      valor: totPix,   cor:"#0f62fe" },
+      { label:"💳 Cartão",   valor: totCar,   cor:"#b8892a" },
+      { label:"🤝 Fiado",    valor: totFiado, cor:"#6366f1" },
+    ].filter(f => f.valor > 0);
     formasEl.innerHTML = formas.map(f => {
       const pct = faturamento > 0 ? ((f.valor/faturamento)*100).toFixed(0) : 0;
       return `<div style="margin-bottom:14px">
