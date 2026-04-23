@@ -1317,8 +1317,8 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
           + Venda Avulsa
         </button>
       </div>
-      <button class="btn btn-success" onclick="abrirPagamento()" style="width:100%;justify-content:center;padding:10px">
-        ✅ Registrar Pagamento
+      <button class="btn btn-success" onclick="enviarFiadoParaPDV()" style="width:100%;justify-content:center;padding:10px">
+        🛒 Cobrar — Enviar para o PDV
       </button>
     </div>
   </div>
@@ -2021,6 +2021,20 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
           <option value="Outro" selected>Outro</option>
         </select>
       </div>
+      <div class="form-field" id="movimento-saiu-caixa-field" style="display:none">
+        <label class="form-label">Saiu do caixa físico?</label>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button type="button" id="btn-saiu-sim" onclick="setSaiuDoCaixa(true)"
+            style="flex:1;padding:9px;border-radius:6px;border:2px solid var(--border2);background:var(--surface);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s">
+            ✅ Sim — desconta do caixa
+          </button>
+          <button type="button" id="btn-saiu-nao" onclick="setSaiuDoCaixa(false)"
+            style="flex:1;padding:9px;border-radius:6px;border:2px solid var(--border2);background:var(--surface);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s">
+            🏦 Não — outra conta
+          </button>
+        </div>
+        <div id="saiu-caixa-hint" style="font-size:11px;color:var(--text3);margin-top:6px;padding:6px 10px;background:var(--surface2);border-radius:6px"></div>
+      </div>
     </div>
     <div class="edit-modal-footer">
       <button class="btn btn-secondary" onclick="fecharMovimento()">Cancelar</button>
@@ -2530,23 +2544,11 @@ function flRemoverPendente(i) {
 
 // Registra lançamento de fiado no caixa (movimentação) e no financeiro (tabela vendas)
 async function registrarFiadoNoCaixa(descricao, valor) {
-  const nomeCliente = clienteAtual?.nome || "Fiado";
-
-  // 1. Registrar no caixa como movimentação tipo "fiado" (se houver caixa aberto)
-  if (_caixaAtual) {
-    await db.from('caixa_movimentos').insert([{
-      caixa_id: _caixaAtual.id,
-      cliente_id: _clienteId,
-      tipo: 'fiado',
-      valor,
-      descricao: `[Fiado] ${nomeCliente} — ${descricao}`
-    }]);
-  }
-
-  // 2. Registrar na tabela vendas para aparecer no financeiro
+  // Registra na tabela vendas para aparecer no financeiro (forma_pgto = Fiado pendente)
+  // O registro no caixa só acontece quando o cliente PAGAR
   await db.from('vendas').insert([{
     cliente_id: _clienteId,
-    caixa_id: _caixaAtual?.id || null,
+    caixa_id: null,
     produto: descricao,
     codigo: 'FIADO',
     qtd: 1,
@@ -2554,7 +2556,7 @@ async function registrarFiadoNoCaixa(descricao, valor) {
     total: valor,
     forma_pgto: 'Fiado',
     valor_pgto1: valor,
-    obs: `Fiado — ${nomeCliente}`
+    obs: `Fiado — ${clienteAtual?.nome || ''}`
   }]);
 }
 
@@ -2649,6 +2651,38 @@ function calcularValorFiado() {
   const preco = parseFloat(document.getElementById("fl-produto-preco").value) || 0;
   const qtd = parseInt(document.getElementById("fl-qtd").value) || 1;
   if (preco) document.getElementById("fl-valor").value = (preco * qtd).toFixed(2);
+}
+
+function enviarFiadoParaPDV() {
+  if (!clienteAtual) return;
+  const saldo = saldoCliente(clienteAtual);
+  if (saldo <= 0) { toast("Este cliente não tem saldo em aberto.", "error"); return; }
+
+  // Adicionar ao carrinho como item avulso representando o saldo do fiado
+  const nomeItem = `Fiado — ${clienteAtual.nome}`;
+  const itemExistente = carrinho.find(i => i.isAvulso && i.nome === nomeItem);
+  if (itemExistente) {
+    // Atualiza o valor se já estava no carrinho
+    itemExistente.preco = saldo;
+    itemExistente.qtd = 1;
+  } else {
+    carrinho.push({
+      codigo: 'FIADO',
+      nome: nomeItem,
+      preco: saldo,
+      qtd: 1,
+      max: 9999,
+      isAvulso: true,
+      isFiado: true,
+      fiadoClienteId: clienteAtual.id,
+      fiadoClienteNome: clienteAtual.nome
+    });
+  }
+
+  fecharDetalhe();
+  nav('venda');
+  renderCarrinho();
+  toast(`Fiado de ${clienteAtual.nome} (R$ ${saldo.toFixed(2).replace(".",",")}) adicionado ao carrinho.`, "ok");
 }
 
 function abrirPagamento() {
@@ -3473,10 +3507,14 @@ async function confirmarPagamento() {
     ? `${p1} R$${v1.toFixed(2)} + ${p2} R$${v2.toFixed(2)}`
     : `${p1}`;
 
+  // Verificar se há item de fiado no carrinho
+  const itensFiado = carrinho.filter(i => i.isFiado);
+
   // Montar registros para salvar no banco
   const registrosVenda = [];
 
   carrinho.forEach(item => {
+    if (item.isFiado) return; // fiado tratado separadamente abaixo
     if (item.isCombo) {
       (item.comboItens||[]).forEach(ci => {
         const p = estoque.find(x => x.id === ci.produto_id);
@@ -3488,7 +3526,6 @@ async function confirmarPagamento() {
     } else {
       const p = estoque.find(x => x.codigo === item.codigo);
       if (p) {
-        // Se for venda de caixa, descontar em unidades (_qtdUn * qtd caixas)
         const qtdDescontar = (item._qtdUn || 1) * item.qtd;
         p.quantidade = Math.max(0, p.quantidade - qtdDescontar);
         db.from('produtos').update({ quantidade: p.quantidade }).eq('id', p.id);
@@ -3519,9 +3556,60 @@ async function confirmarPagamento() {
     });
   });
 
-  // Salvar vendas no banco
+  // Salvar vendas normais no banco
   if (registrosVenda.length > 0) {
     await db.from('vendas').insert(registrosVenda);
+  }
+
+  // Processar pagamento de fiado
+  for (const item of itensFiado) {
+    const valorFiado = item.preco * item.qtd;
+    const fiadoClienteId = item.fiadoClienteId;
+    const fiadoClienteNome = item.fiadoClienteNome;
+
+    // 1. Registrar crédito no fiado_lancamentos
+    await db.from('fiado_lancamentos').insert([{
+      fiado_cliente_id: fiadoClienteId,
+      tipo: "credito",
+      descricao: `Pagamento — ${pgtoLabel}`,
+      valor: valorFiado,
+      data,
+      hora
+    }]);
+
+    // 2. Registrar no caixa como movimentação
+    if (_caixaAtual) {
+      await db.from('caixa_movimentos').insert([{
+        caixa_id: _caixaAtual.id,
+        cliente_id: _clienteId,
+        tipo: 'fiado',
+        valor: valorFiado,
+        descricao: `[Pgto Fiado] ${fiadoClienteNome} — ${pgtoLabel}`
+      }]);
+    }
+
+    // 3. Registrar na tabela vendas para o financeiro (com forma de pagamento real)
+    await db.from('vendas').insert([{
+      cliente_id: _clienteId,
+      caixa_id: _caixaAtual?.id || null,
+      produto: `Pgto Fiado — ${fiadoClienteNome}`,
+      codigo: 'FIADO_PGTO',
+      qtd: 1,
+      preco: valorFiado,
+      total: valorFiado,
+      forma_pgto: p1,
+      forma_pgto2: p2 || null,
+      valor_pgto1: v1,
+      valor_pgto2: v2 || null,
+      obs: `Pgto Fiado ${fiadoClienteNome} — ${pgtoLabel}`
+    }]);
+
+    // 4. Atualizar saldo do cliente na lista local se ele estiver carregado
+    const cli = clientes.find(c => c.id === fiadoClienteId);
+    if (cli) {
+      cli.lancamentos = cli.lancamentos || [];
+      cli.lancamentos.push({ tipo: "credito", valor: valorFiado, descricao: `Pagamento — ${pgtoLabel}`, data, hora });
+    }
   }
 
   fecharPgto();
@@ -3529,9 +3617,11 @@ async function confirmarPagamento() {
   limparCarrinho();
   renderDashboard();
   renderPDVGrid();
-  // Atualizar caixa após venda finalizada
-  if (_caixaAtual) {
-    await mostrarCaixaAberto();
+  if (_caixaAtual) await mostrarCaixaAberto();
+  // Atualizar fiado se houver pagamento
+  if (itensFiado.length > 0) {
+    await carregarFiado();
+    renderFiado();
   }
 }
 
@@ -4093,6 +4183,32 @@ function calcularDiferenca() {
 let _movimentoTipo = null;
 let _movimentoEditandoId = null;
 
+function setSaiuDoCaixa(valor) {
+  window._saiuDoCaixa = valor;
+  const btnSim = document.getElementById("btn-saiu-sim");
+  const btnNao = document.getElementById("btn-saiu-nao");
+  const hint   = document.getElementById("saiu-caixa-hint");
+  if (valor) {
+    btnSim.style.borderColor = "var(--green)";
+    btnSim.style.background  = "var(--green-dim)";
+    btnSim.style.color       = "var(--green)";
+    btnNao.style.borderColor = "var(--border2)";
+    btnNao.style.background  = "var(--surface)";
+    btnNao.style.color       = "var(--text)";
+    hint.textContent = "O valor será descontado do saldo esperado no caixa.";
+    hint.style.color = "var(--green)";
+  } else {
+    btnNao.style.borderColor = "var(--blue)";
+    btnNao.style.background  = "var(--blue-dim)";
+    btnNao.style.color       = "var(--blue)";
+    btnSim.style.borderColor = "var(--border2)";
+    btnSim.style.background  = "var(--surface)";
+    btnSim.style.color       = "var(--text)";
+    hint.textContent = "Não afeta o saldo do caixa, mas será registrado no financeiro.";
+    hint.style.color = "var(--blue)";
+  }
+}
+
 function abrirMovimento(tipo) {
   _movimentoTipo = tipo;
   _movimentoEditandoId = null;
@@ -4108,7 +4224,12 @@ function abrirMovimento(tipo) {
   document.getElementById("movimento-valor").value = "";
   document.getElementById("movimento-descricao").value = "";
   document.getElementById("movimento-categoria-field").style.display = isSangria ? "block" : "none";
-  if (isSangria) document.getElementById("movimento-categoria").value = "Outro";
+  document.getElementById("movimento-saiu-caixa-field").style.display = isSangria ? "block" : "none";
+  if (isSangria) {
+    document.getElementById("movimento-categoria").value = "Outro";
+    window._saiuDoCaixa = true;
+    setSaiuDoCaixa(true);
+  }
   document.getElementById("movimento-modal").classList.add("open");
   setTimeout(() => document.getElementById("movimento-valor").focus(), 100);
 }
@@ -4129,16 +4250,18 @@ async function confirmarMovimento() {
     toast(`Lançamento atualizado com sucesso!`, "ok");
   } else {
     // Modo novo
+    const saiuDoCaixa = window._saiuDoCaixa !== false; // default true
     const { error } = await db.from('caixa_movimentos').insert([{
       caixa_id: _caixaAtual.id,
       cliente_id: _clienteId,
       tipo: _movimentoTipo,
       valor,
-      descricao
+      descricao,
+      saiu_do_caixa: _movimentoTipo === 'sangria' ? saiuDoCaixa : null
     }]);
     if (error) { toast("Erro ao registrar movimento.", "error"); console.error(error); return; }
 
-    // Se for sangria, salva também na tabela despesas
+    // Se for sangria, salva também na tabela despesas (sempre, independente de saiu_do_caixa)
     if (_movimentoTipo === "sangria") {
       const categoria = document.getElementById("movimento-categoria")?.value || "Outro";
       await db.from('despesas').insert([{
@@ -4167,16 +4290,18 @@ async function renderMovimentos() {
 
   const lista = document.getElementById("caixa-movimentos-lista");
   const totalSangria = (movs||[]).filter(m => m.tipo === "sangria").reduce((a,m) => a + parseFloat(m.valor||0), 0);
+  const totalSangriaFisica = (movs||[]).filter(m => m.tipo === "sangria" && m.saiu_do_caixa !== false).reduce((a,m) => a + parseFloat(m.valor||0), 0);
   const totalSuprimento = (movs||[]).filter(m => m.tipo === "suprimento").reduce((a,m) => a + parseFloat(m.valor||0), 0);
 
-  // Atualizar KPI sangria e esperado — sempre, independente de _caixaTotais
+  // KPI Despesas mostra todas as sangrias (físicas e de outra conta)
   document.getElementById("caixa-kpi-sangria").textContent = "R$ " + totalSangria.toFixed(2).replace(".",",");
 
   const _totalDinheiro = window._caixaTotais && window._caixaTotais.totalDinheiro !== undefined
     ? window._caixaTotais.totalDinheiro
     : (parseFloat((document.getElementById("caixa-kpi-dinheiro").textContent||"").replace("R$ ","").replace(",",".")) || 0);
 
-  const novoEsperado = _totalDinheiro + parseFloat(_caixaAtual.valor_abertura||0) - totalSangria + totalSuprimento;
+  // Esperado só desconta sangrias que saíram do caixa físico
+  const novoEsperado = _totalDinheiro + parseFloat(_caixaAtual.valor_abertura||0) - totalSangriaFisica + totalSuprimento;
 
   if (window._caixaTotais) window._caixaTotais.esperado = novoEsperado;
   document.getElementById("caixa-kpi-esperado").textContent = "R$ " + novoEsperado.toFixed(2).replace(".",",");
@@ -4194,7 +4319,9 @@ async function renderMovimentos() {
     const cor   = isSangria ? "var(--red)"    : isFiado ? "var(--blue)"   : "var(--green)";
     const bg    = isSangria ? "#fff1f1"       : isFiado ? "#eff6ff"       : "#ecfdf5";
     const borda = isSangria ? "#fecaca"       : isFiado ? "#bfdbfe"       : "#a7f3d0";
-    const label = isSangria ? "📤 Despesa"    : isFiado ? "🤝 Fiado"      : "📥 Gorjeta";
+    const label = isSangria
+      ? (m.saiu_do_caixa === false ? "🏦 Despesa (outra conta)" : "📤 Despesa")
+      : isFiado ? "🤝 Fiado" : "📥 Gorjeta";
     const editBtns = isFiado ? "" : `
         <button onclick="editarMovimento('${m.id}')" style="background:none;border:1px solid ${borda};color:${cor};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">✏️</button>
         <button onclick="excluirMovimento('${m.id}')" style="background:none;border:1px solid ${borda};color:${cor};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">✕</button>`;
