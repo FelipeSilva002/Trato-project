@@ -2110,11 +2110,11 @@ async function carregarEstoque() {
 
 async function carregarHistorico() {
   const limite = new Date();
-  limite.setDate(limite.getDate() - 90);
+  limite.setDate(limite.getDate() - 30); // Otimizado: 30 dias (era 90)
 
   const { data: vendas, error } = await db
     .from('vendas')
-    .select('*')
+    .select('criado_em, produto, codigo, preco, qtd, total, obs, forma_pgto') // Otimizado: campos específicos (era *)
     .eq('cliente_id', _clienteId)
     .gte('criado_em', limite.toISOString())
     .order('criado_em', { ascending: true });
@@ -2123,7 +2123,6 @@ async function carregarHistorico() {
 
   historico = (vendas || []).map((v, i) => {
     const dt = new Date(v.criado_em);
-    // Formato fixo DD/MM/YYYY para garantir compatibilidade entre navegadores
     const dd = String(dt.getDate()).padStart(2, '0');
     const mm = String(dt.getMonth() + 1).padStart(2, '0');
     const yyyy = dt.getFullYear();
@@ -5978,27 +5977,41 @@ async function renderFinChartEvolucao(mesAtual, anoAtual) {
   const dataFat = [], dataDesp = [], dataLucro = [];
   const mesesNomes = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
+  // Calcular intervalo completo dos 6 meses de uma vez
+  let mInicio = mesAtual - 5, aInicio = anoAtual;
+  if (mInicio <= 0) { mInicio += 12; aInicio -= 1; }
+  const dataInicio = `${aInicio}-${String(mInicio).padStart(2,"0")}-01`;
+  const fimDate = new Date(anoAtual, mesAtual, 0);
+  const dataFim = `${anoAtual}-${String(mesAtual).padStart(2,"0")}-${String(fimDate.getDate()).padStart(2,"0")}`;
+
+  // Otimizado: 1 query para vendas dos 6 meses (era 6 queries separadas)
+  const { data: todasVendas } = await db
+    .from("vendas").select("total, criado_em")
+    .eq("cliente_id", _clienteId)
+    .gte("criado_em", dataInicio + "T00:00:00")
+    .lte("criado_em", dataFim + "T23:59:59");
+
+  // Otimizado: 1 query para despesas dos 6 meses (era 6 queries separadas)
+  const { data: todasDespesas } = await db
+    .from("despesas").select("valor, data")
+    .eq("cliente_id", _clienteId)
+    .gte("data", dataInicio)
+    .lte("data", dataFim);
+
+  // Agrupar por mês no JS
   for (let i = 5; i >= 0; i--) {
     let m = mesAtual - i;
     let a = anoAtual;
     if (m <= 0) { m += 12; a -= 1; }
     labels.push(mesesNomes[m-1] + "/" + String(a).slice(2));
 
-    const inicio = `${a}-${String(m).padStart(2,"0")}-01`;
-    const fimDate = new Date(a, m, 0);
-    const fim = `${a}-${String(m).padStart(2,"0")}-${String(fimDate.getDate()).padStart(2,"0")}`;
-
-    const { data: vendasMes } = await db
-      .from("vendas").select("total")
-      .eq("cliente_id", _clienteId)
-      .gte("criado_em", inicio+"T00:00:00").lte("criado_em", fim+"T23:59:59");
-
-    const fat = (vendasMes||[]).reduce((a,v) => a+parseFloat(v.total||0),0);
-
-    const { data: despMes } = await db.from("despesas")
-      .select("valor").eq("cliente_id",_clienteId)
-      .gte("data", inicio).lte("data", fim);
-    const desp = (despMes||[]).reduce((a,m)=>a+parseFloat(m.valor||0),0);
+    const prefixo = `${a}-${String(m).padStart(2,"0")}`;
+    const fat = (todasVendas||[])
+      .filter(v => (v.criado_em||"").startsWith(prefixo))
+      .reduce((acc,v) => acc + parseFloat(v.total||0), 0);
+    const desp = (todasDespesas||[])
+      .filter(d => (d.data||"").startsWith(prefixo))
+      .reduce((acc,d) => acc + parseFloat(d.valor||0), 0);
 
     dataFat.push(parseFloat(fat.toFixed(2)));
     dataDesp.push(parseFloat(desp.toFixed(2)));
