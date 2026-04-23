@@ -556,6 +556,58 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
 .hidden { display:none !important; }
 .mb16 { margin-bottom:16px; }
 
+
+/* ── ORDEM DE SERVIÇO ── */
+.os-table { width:100%; border-collapse:collapse; }
+.os-table th { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text3); padding:10px 14px; border-bottom:1px solid var(--border); text-align:left; }
+.os-table td { padding:12px 14px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; }
+.os-table tr:hover td { background:var(--surface2); }
+.os-status { display:inline-block; font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; }
+.os-status.aguardando { background:rgba(251,191,36,0.15); color:#b45309; }
+.os-status.orcamento  { background:rgba(59,130,246,0.12); color:#1e6fa8; }
+.os-status.aprovado   { background:rgba(139,92,246,0.12); color:#7c3aed; }
+.os-status.andamento  { background:rgba(245,158,11,0.12); color:#92400e; }
+.os-status.pronto     { background:rgba(34,197,94,0.12);  color:#166534; }
+.os-status.entregue   { background:rgba(16,185,129,0.12); color:#065f46; }
+.os-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:200; align-items:center; justify-content:center; }
+.os-modal-overlay.open { display:flex; }
+.os-modal { background:var(--surface); border-radius:14px; width:680px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25); display:flex; flex-direction:column; }
+.os-modal-header { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface2); flex-shrink:0; position:sticky; top:0; z-index:10; }
+.os-modal-body { padding:20px 22px; flex:1; }
+.os-section-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--text3); margin:0 0 12px; }
+.os-field-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+.os-field-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:16px; }
+.os-field { display:flex; flex-direction:column; gap:5px; }
+.os-field label { font-size:12px; color:var(--text3); }
+.os-field input, .os-field select, .os-field textarea { font-size:13px; padding:8px 11px; border:1px solid var(--border2); border-radius:8px; background:var(--surface2); color:var(--text); font-family:inherit; width:100%; box-sizing:border-box; }
+.os-field textarea { resize:none; line-height:1.5; }
+.os-field input:focus, .os-field select:focus, .os-field textarea:focus { outline:none; border-color:var(--gold); }
+.os-divider { border:none; border-top:1px solid var(--border); margin:16px 0; }
+.os-checklist { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.os-check-item { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); cursor:pointer; }
+.os-check-item input[type=checkbox] { width:14px; height:14px; accent-color:var(--gold); cursor:pointer; flex-shrink:0; }
+.os-status-pills { display:flex; gap:7px; flex-wrap:wrap; }
+.os-pill { font-size:12px; padding:6px 13px; border-radius:20px; border:1px solid var(--border2); background:var(--surface2); color:var(--text3); cursor:pointer; transition:all 0.15s; }
+.os-pill.sel-aguardando { background:rgba(251,191,36,0.18); color:#b45309; border-color:#f59e0b; }
+.os-pill.sel-orcamento  { background:rgba(59,130,246,0.15); color:#1e6fa8; border-color:#3b82f6; }
+.os-pill.sel-aprovado   { background:rgba(139,92,246,0.15); color:#7c3aed; border-color:#8b5cf6; }
+.os-pill.sel-andamento  { background:rgba(245,158,11,0.15); color:#92400e; border-color:#f59e0b; }
+.os-pill.sel-pronto     { background:rgba(34,197,94,0.15);  color:#166534; border-color:#22c55e; }
+.os-pill.sel-entregue   { background:rgba(16,185,129,0.15); color:#065f46; border-color:#10b981; }
+.os-valor-cards { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px; }
+.os-valor-card { background:var(--surface2); border-radius:8px; padding:10px 13px; }
+.os-valor-card .lbl { font-size:11px; color:var(--text3); margin-bottom:3px; }
+.os-valor-card .val { font-size:16px; font-weight:700; color:var(--text); }
+.os-valor-card .val.green { color:var(--green); }
+.os-modal-footer { padding:14px 22px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; background:var(--surface2); flex-shrink:0; }
+.os-btn { font-size:13px; font-weight:600; padding:9px 18px; border-radius:9px; cursor:pointer; border:1px solid var(--border2); background:var(--surface); color:var(--text2); transition:background 0.12s; font-family:inherit; }
+.os-btn:hover { background:var(--surface2); }
+.os-btn-primary { background:linear-gradient(135deg,#1e6fa8,#1a3a6b) !important; color:#fff !important; border-color:#1e6fa8 !important; }
+.os-btn-primary:hover { background:linear-gradient(135deg,#1e6fa8,#1a3a6b) !important; opacity:0.9; }
+.os-empty { text-align:center; padding:48px 20px; color:var(--text3); }
+.os-empty .icon { font-size:36px; margin-bottom:10px; }
+.os-num-badge { font-size:10px; font-family:monospace; color:var(--text3); }
+
 @media (max-width:1100px) { .charts-row { grid-template-columns:1fr; } }
 @media (max-width:900px)  { .kpi-row { grid-template-columns:1fr 1fr; } .sidebar { width:200px; } .main { margin-left:200px; } }
 @media (max-width:640px)  { .sidebar { display:none; } .main { margin-left:0; } .kpi-row { grid-template-columns:1fr; } .page { padding:16px; } }
@@ -615,6 +667,10 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
     <div class="nav-item" id="nav-fiado" onclick="nav('fiado')">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Fiado / Contas
+    </div>
+    <div class="nav-item" id="nav-os" onclick="nav('os')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Ordem de Serviço
     </div>
     <div class="nav-item" id="nav-produtos" onclick="nav('produtos')">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
@@ -1203,6 +1259,45 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
       </div>
     </div>
 
+  <!-- ══ ORDEM DE SERVIÇO ══ -->
+    <div class="page-view" id="view-os">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Ordem de Serviço</div>
+          <div class="page-subtitle">Controle de consertos e assistência técnica</div>
+        </div>
+        <button onclick="abrirNovaOS()" style="background:linear-gradient(135deg,#2ab5c5,#1e6fa8);color:#fff;border:none;border-radius:9px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.02em;box-shadow:0 2px 8px rgba(42,181,197,0.35);transition:opacity 0.15s,transform 0.1s;" onmouseover="this.style.opacity='0.9';this.style.transform='translateY(-1px)'" onmouseout="this.style.opacity='1';this.style.transform='translateY(0)'">&#43; Nova OS</button>
+      </div>
+
+      <!-- Filtros rápidos -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="os-pill sel-aguardando" id="filtro-os-todos" onclick="filtrarOS('todos')" style="font-size:11px;padding:4px 12px;border-radius:20px;cursor:pointer">Todas</button>
+        <button class="os-pill" id="filtro-os-aberta" onclick="filtrarOS('aberta')" style="font-size:11px;padding:4px 12px;border-radius:20px;cursor:pointer">Em aberto</button>
+        <button class="os-pill" id="filtro-os-pronto" onclick="filtrarOS('pronto')" style="font-size:11px;padding:4px 12px;border-radius:20px;cursor:pointer">Pronto</button>
+        <button class="os-pill" id="filtro-os-entregue" onclick="filtrarOS('entregue')" style="font-size:11px;padding:4px 12px;border-radius:20px;cursor:pointer">Entregue</button>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="os-table">
+          <thead>
+            <tr>
+              <th>OS</th>
+              <th>Cliente</th>
+              <th>Aparelho</th>
+              <th>Técnico</th>
+              <th>Status</th>
+              <th>Valor</th>
+              <th>Data</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="os-tbody">
+            <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   <!-- ══ FIADO ══ -->
     <div class="page-view" id="view-fiado">
       <div class="page-header">
@@ -1255,6 +1350,137 @@ tbody td { padding:12px 16px; font-size:13px; color:var(--text); vertical-align:
 
   </div>
 </div>
+</div>
+
+<!-- MODAL ORDEM DE SERVIÇO -->
+<div class="os-modal-overlay" id="os-modal-overlay">
+  <div class="os-modal">
+    <div class="os-modal-header">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text)" id="os-modal-titulo">Nova Ordem de Serviço</div>
+        <div class="os-num-badge" id="os-modal-num"></div>
+      </div>
+      <button onclick="fecharOSModal()" style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px;color:var(--text3)">✕</button>
+    </div>
+    <div class="os-modal-body">
+
+      <!-- Cliente -->
+      <p class="os-section-title">Dados do Cliente</p>
+      <div class="os-field-grid">
+        <div class="os-field"><label>Nome do cliente *</label><input type="text" id="os-cliente-nome" placeholder="Nome completo"></div>
+        <div class="os-field"><label>Telefone / WhatsApp</label><input type="text" id="os-cliente-tel" placeholder="(11) 99999-9999"></div>
+        <div class="os-field"><label>CPF (opcional)</label><input type="text" id="os-cliente-cpf" placeholder="000.000.000-00"></div>
+        <div class="os-field"><label>Técnico responsável</label><input type="text" id="os-tecnico" placeholder="Nome do técnico"></div>
+      </div>
+
+      <hr class="os-divider">
+
+      <!-- Aparelho -->
+      <p class="os-section-title">Aparelho</p>
+      <div class="os-field-grid-3">
+        <div class="os-field"><label>Tipo</label>
+          <select id="os-tipo">
+            <option>Celular</option><option>Tablet</option><option>Notebook</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="os-field"><label>Marca</label><input type="text" id="os-marca" placeholder="Ex: Samsung"></div>
+        <div class="os-field"><label>Modelo</label><input type="text" id="os-modelo" placeholder="Ex: Galaxy A54"></div>
+        <div class="os-field"><label>Cor</label><input type="text" id="os-cor" placeholder="Ex: Preto"></div>
+      </div>
+
+      <hr class="os-divider">
+
+      <!-- Condições na entrada -->
+      <p class="os-section-title">Condições na Entrada</p>
+      <div class="os-checklist" id="os-condicoes-lista">
+        <label class="os-check-item"><input type="checkbox" value="Tela trincada"> Tela trincada</label>
+        <label class="os-check-item"><input type="checkbox" value="Amassado / batida no corpo"> Amassado / batida</label>
+        <label class="os-check-item"><input type="checkbox" value="Tampa traseira danificada"> Tampa traseira danificada</label>
+        <label class="os-check-item"><input type="checkbox" value="Não liga"> Não liga</label>
+        <label class="os-check-item"><input type="checkbox" value="Molhado"> Molhado</label>
+        <label class="os-check-item"><input type="checkbox" value="Sem bateria"> Sem bateria</label>
+      </div>
+      <div class="os-field" style="margin-top:10px">
+        <label>Outras observações de entrada</label>
+        <textarea id="os-obs-entrada" rows="2" placeholder="Descreva outras condições visíveis..."></textarea>
+      </div>
+
+      <hr class="os-divider">
+
+      <!-- Acessórios -->
+      <p class="os-section-title">Acessórios Entregues pelo Cliente</p>
+      <div class="os-checklist" id="os-acessorios-lista">
+        <label class="os-check-item"><input type="checkbox" value="Capinha"> Capinha</label>
+        <label class="os-check-item"><input type="checkbox" value="Carregador"> Carregador</label>
+        <label class="os-check-item"><input type="checkbox" value="Cabo USB"> Cabo USB</label>
+        <label class="os-check-item"><input type="checkbox" value="Chip removido"> Chip removido</label>
+        <label class="os-check-item"><input type="checkbox" value="Fone de ouvido"> Fone de ouvido</label>
+        <label class="os-check-item"><input type="checkbox" value="Película"> Película</label>
+      </div>
+
+      <hr class="os-divider">
+
+      <!-- Problema -->
+      <p class="os-section-title">Problema</p>
+      <div class="os-field" style="margin-bottom:10px">
+        <label>O que o cliente relatou</label>
+        <textarea id="os-problema-cliente" rows="2" placeholder="Descreva o problema que o cliente relatou..."></textarea>
+      </div>
+      <div class="os-field">
+        <label>Diagnóstico técnico</label>
+        <textarea id="os-diagnostico" rows="2" placeholder="Preencher após avaliação técnica..."></textarea>
+      </div>
+
+      <hr class="os-divider">
+
+      <!-- Status -->
+      <p class="os-section-title">Status da OS</p>
+      <div class="os-status-pills" id="os-status-pills">
+        <span class="os-pill sel-aguardando" data-status="aguardando" onclick="selecionarStatusOS(this)">Aguardando avaliação</span>
+        <span class="os-pill" data-status="orcamento" onclick="selecionarStatusOS(this)">Orçamento enviado</span>
+        <span class="os-pill" data-status="aprovado" onclick="selecionarStatusOS(this)">Aprovado</span>
+        <span class="os-pill" data-status="andamento" onclick="selecionarStatusOS(this)">Em andamento</span>
+        <span class="os-pill" data-status="pronto" onclick="selecionarStatusOS(this)">Pronto</span>
+        <span class="os-pill" data-status="entregue" onclick="selecionarStatusOS(this)">Entregue</span>
+      </div>
+
+      <hr class="os-divider">
+
+      <!-- Financeiro -->
+      <p class="os-section-title">Financeiro</p>
+      <div class="os-field-grid-3">
+        <div class="os-field"><label>Orçamento (R$)</label><input type="number" id="os-orcamento" placeholder="0,00" min="0" step="0.01" oninput="calcRestoOS()"></div>
+        <div class="os-field"><label>Sinal recebido (R$)</label><input type="number" id="os-sinal" placeholder="0,00" min="0" step="0.01" oninput="calcRestoOS()"></div>
+        <div class="os-field"><label>Forma de pagamento</label>
+          <select id="os-pagamento">
+            <option>PIX</option><option>Dinheiro</option><option>Cartão débito</option><option>Cartão crédito</option>
+          </select>
+        </div>
+      </div>
+      <div class="os-valor-cards">
+        <div class="os-valor-card"><div class="lbl">Orçamento</div><div class="val" id="os-card-orcamento">R$ 0,00</div></div>
+        <div class="os-valor-card"><div class="lbl">Sinal pago</div><div class="val" id="os-card-sinal">R$ 0,00</div></div>
+        <div class="os-valor-card"><div class="lbl">Restante</div><div class="val green" id="os-card-resto">R$ 0,00</div></div>
+      </div>
+
+      <hr class="os-divider">
+
+      <!-- Entrega -->
+      <p class="os-section-title">Garantia & Entrega</p>
+      <div class="os-field-grid">
+        <div class="os-field"><label>Prazo de garantia (dias)</label><input type="number" id="os-garantia" value="90" min="0"></div>
+        <div class="os-field"><label>Data de retirada</label><input type="date" id="os-data-retirada"></div>
+      </div>
+      <label class="os-check-item" style="margin-top:8px">
+        <input type="checkbox" id="os-cliente-ciente"> Cliente ciente das condições e garantia
+      </label>
+
+    </div>
+    <div class="os-modal-footer">
+      <button class="os-btn" onclick="fecharOSModal()">Cancelar</button>
+      <button class="os-btn os-btn-primary" id="os-btn-salvar" onclick="salvarOS()">💾 Salvar OS</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL NOVO CLIENTE -->
@@ -2250,6 +2476,7 @@ function nav(aba){
   if(aba==="relatorio")renderRelatorio();
   if(aba==="caixa"){ renderCaixa(); return; }
   if(aba==="configuracoes"){ renderConfiguracoes(); return; }
+  if(aba==="os"){ carregarOS(); return; }
   if(aba==="fiado"){ carregarFiado(); return; }
   if(aba==="combos"){ carregarCombos(); return; }
   if(aba==="mesas"){ carregarMesas(); return; }
@@ -3902,31 +4129,273 @@ document.getElementById("view-venda").addEventListener("click", e => {
     if (el) el.focus();
   }
 });
+
+// ── ORDEM DE SERVIÇO ─────────────────────────────────────
+let _osAtual = null;
+let _osStatusSel = 'aguardando';
+let _osFiltroAtual = 'todos';
+
+const OS_STATUS_MAP = {
+  aguardando: 'Aguardando avaliação',
+  orcamento:  'Orçamento enviado',
+  aprovado:   'Aprovado',
+  andamento:  'Em andamento',
+  pronto:     'Pronto',
+  entregue:   'Entregue'
+};
+
+async function carregarOS() {
+  const tbody = document.getElementById('os-tbody');
+  if (!tbody) return;
+  const { data, error } = await db.from('ordens_servico')
+    .select('*')
+    .eq('cliente_id', _clienteId)
+    .order('created_at', { ascending: false });
+  if (error) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red)">Erro ao carregar OS</td></tr>`; return; }
+  renderOSTabela(data || []);
+}
+
+function renderOSTabela(lista) {
+  const tbody = document.getElementById('os-tbody');
+  if (!tbody) return;
+  const filtro = _osFiltroAtual;
+  const filtrada = filtro === 'todos' ? lista :
+    filtro === 'aberta' ? lista.filter(o => !['pronto','entregue'].includes(o.status)) :
+    lista.filter(o => o.status === filtro);
+
+  if (!filtrada.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">📋</div>Nenhuma OS encontrada</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtrada.map(o => `
+    <tr style="cursor:pointer" onclick="abrirOSDetalhe('${o.id}')">
+      <td><span style="font-family:monospace;font-size:12px;color:var(--text3)">#${String(o.numero||'').padStart(4,'0')}</span></td>
+      <td><div style="font-weight:600;font-size:13px">${o.cliente_nome||'—'}</div><div style="font-size:11px;color:var(--text3)">${o.cliente_tel||''}</div></td>
+      <td><div style="font-size:13px">${o.aparelho_marca||''} ${o.aparelho_modelo||''}</div><div style="font-size:11px;color:var(--text3)">${o.aparelho_tipo||''}</div></td>
+      <td style="font-size:13px">${o.tecnico||'—'}</td>
+      <td><span class="os-status ${o.status||'aguardando'}">${OS_STATUS_MAP[o.status]||o.status}</span></td>
+      <td style="font-size:13px;font-weight:600">R$ ${parseFloat(o.orcamento||0).toFixed(2).replace('.',',')}</td>
+      <td style="font-size:12px;color:var(--text3)">${o.created_at ? new Date(o.created_at).toLocaleDateString('pt-BR') : '—'}</td>
+      <td><button onclick="event.stopPropagation();abrirOSDetalhe('${o.id}')" style="background:none;border:1px solid var(--border2);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--text3)">Abrir</button></td>
+    </tr>`).join('');
+}
+
+function filtrarOS(f) {
+  _osFiltroAtual = f;
+  document.querySelectorAll('[id^="filtro-os-"]').forEach(b => b.className = 'os-pill');
+  const el = document.getElementById('filtro-os-' + f);
+  if (el) el.classList.add('sel-aguardando');
+  carregarOS();
+}
+
+function abrirNovaOS() {
+  _osAtual = null;
+  _osStatusSel = 'aguardando';
+  limparFormOS();
+  document.getElementById('os-modal-titulo').textContent = 'Nova Ordem de Serviço';
+  document.getElementById('os-modal-num').textContent = '';
+  document.getElementById('os-btn-salvar').textContent = '💾 Salvar OS';
+  document.getElementById('os-modal-overlay').classList.add('open');
+}
+
+async function abrirOSDetalhe(id) {
+  const { data: os } = await db.from('ordens_servico').select('*').eq('id', id).single();
+  if (!os) return;
+  _osAtual = os;
+  _osStatusSel = os.status || 'aguardando';
+  preencherFormOS(os);
+  document.getElementById('os-modal-titulo').textContent = 'Ordem de Serviço';
+  document.getElementById('os-modal-num').textContent = '#' + String(os.numero||'').padStart(4,'0') + ' · ' + new Date(os.created_at).toLocaleDateString('pt-BR');
+  document.getElementById('os-btn-salvar').textContent = '💾 Atualizar OS';
+  document.getElementById('os-modal-overlay').classList.add('open');
+}
+
+function fecharOSModal() {
+  document.getElementById('os-modal-overlay').classList.remove('open');
+  _osAtual = null;
+}
+
+function limparFormOS() {
+  ['os-cliente-nome','os-cliente-tel','os-cliente-cpf','os-tecnico','os-marca','os-modelo','os-cor',
+   'os-obs-entrada','os-problema-cliente','os-diagnostico','os-orcamento','os-sinal','os-data-retirada'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('os-tipo').value = 'Celular';
+  document.getElementById('os-pagamento').value = 'PIX';
+  document.getElementById('os-garantia').value = '90';
+  document.getElementById('os-cliente-ciente').checked = false;
+  document.querySelectorAll('#os-condicoes-lista input[type=checkbox]').forEach(c => c.checked = false);
+  document.querySelectorAll('#os-acessorios-lista input[type=checkbox]').forEach(c => c.checked = false);
+  selecionarStatusOS(document.querySelector('.os-pill[data-status="aguardando"]'));
+  calcRestoOS();
+}
+
+function preencherFormOS(os) {
+  const set = (id, val) => { const e = document.getElementById(id); if (e) e.value = val||''; };
+  set('os-cliente-nome', os.cliente_nome);
+  set('os-cliente-tel',  os.cliente_tel);
+  set('os-cliente-cpf',  os.cliente_cpf);
+  set('os-tecnico',      os.tecnico);
+  set('os-marca',        os.aparelho_marca);
+  set('os-modelo',       os.aparelho_modelo);
+  set('os-cor',          os.aparelho_cor);
+  set('os-obs-entrada',  os.obs_entrada);
+  set('os-problema-cliente', os.problema_cliente);
+  set('os-diagnostico',  os.diagnostico);
+  set('os-orcamento',    os.orcamento);
+  set('os-sinal',        os.sinal);
+  set('os-garantia',     os.garantia_dias||90);
+  set('os-data-retirada', os.data_retirada||'');
+  document.getElementById('os-tipo').value = os.aparelho_tipo||'Celular';
+  document.getElementById('os-pagamento').value = os.forma_pagamento||'PIX';
+  document.getElementById('os-cliente-ciente').checked = !!os.cliente_ciente;
+  const conds = os.condicoes_entrada || [];
+  document.querySelectorAll('#os-condicoes-lista input[type=checkbox]').forEach(c => c.checked = conds.includes(c.value));
+  const aces = os.acessorios || [];
+  document.querySelectorAll('#os-acessorios-lista input[type=checkbox]').forEach(c => c.checked = aces.includes(c.value));
+  const pill = document.querySelector(`.os-pill[data-status="${os.status||'aguardando'}"]`);
+  if (pill) selecionarStatusOS(pill);
+  calcRestoOS();
+}
+
+function selecionarStatusOS(el) {
+  document.querySelectorAll('.os-pill').forEach(p => p.className = 'os-pill');
+  if (!el) return;
+  _osStatusSel = el.dataset.status;
+  el.classList.add('sel-' + _osStatusSel);
+}
+
+function calcRestoOS() {
+  const orc = parseFloat(document.getElementById('os-orcamento')?.value||0)||0;
+  const sin = parseFloat(document.getElementById('os-sinal')?.value||0)||0;
+  const fmt = v => 'R$ ' + v.toFixed(2).replace('.',',');
+  const ce = document.getElementById('os-card-orcamento');
+  const cs = document.getElementById('os-card-sinal');
+  const cr = document.getElementById('os-card-resto');
+  if (ce) ce.textContent = fmt(orc);
+  if (cs) cs.textContent = fmt(sin);
+  if (cr) cr.textContent = fmt(Math.max(0, orc - sin));
+}
+
+async function salvarOS() {
+  const btn = document.getElementById('os-btn-salvar');
+  const nome = document.getElementById('os-cliente-nome').value.trim();
+  if (!nome) { toast('Informe o nome do cliente.', 'erro'); return; }
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  const condicoes = [...document.querySelectorAll('#os-condicoes-lista input:checked')].map(c => c.value);
+  const acessorios = [...document.querySelectorAll('#os-acessorios-lista input:checked')].map(c => c.value);
+
+  const payload = {
+    cliente_id:      _clienteId,
+    cliente_nome:    nome,
+    cliente_tel:     document.getElementById('os-cliente-tel').value.trim(),
+    cliente_cpf:     document.getElementById('os-cliente-cpf').value.trim(),
+    tecnico:         document.getElementById('os-tecnico').value.trim(),
+    aparelho_tipo:   document.getElementById('os-tipo').value,
+    aparelho_marca:  document.getElementById('os-marca').value.trim(),
+    aparelho_modelo: document.getElementById('os-modelo').value.trim(),
+    aparelho_cor:    document.getElementById('os-cor').value.trim(),
+    condicoes_entrada: condicoes,
+    acessorios,
+    obs_entrada:     document.getElementById('os-obs-entrada').value.trim(),
+    problema_cliente:document.getElementById('os-problema-cliente').value.trim(),
+    diagnostico:     document.getElementById('os-diagnostico').value.trim(),
+    status:          _osStatusSel,
+    orcamento:       parseFloat(document.getElementById('os-orcamento').value)||0,
+    sinal:           parseFloat(document.getElementById('os-sinal').value)||0,
+    forma_pagamento: document.getElementById('os-pagamento').value,
+    garantia_dias:   parseInt(document.getElementById('os-garantia').value)||90,
+    data_retirada:   document.getElementById('os-data-retirada').value||null,
+    cliente_ciente:  document.getElementById('os-cliente-ciente').checked,
+  };
+
+  let err;
+  if (_osAtual) {
+    const { error } = await db.from('ordens_servico').update(payload).eq('id', _osAtual.id);
+    err = error;
+  } else {
+    // Gerar próximo número
+    const { data: last } = await db.from('ordens_servico')
+      .select('numero').eq('cliente_id', _clienteId)
+      .order('numero', { ascending: false }).limit(1).single();
+    payload.numero = (last?.numero||0) + 1;
+    const { error } = await db.from('ordens_servico').insert(payload);
+    err = error;
+  }
+
+  if (err) { toast('Erro ao salvar OS: ' + err.message, 'erro'); }
+  else { toast(_osAtual ? '✅ OS atualizada!' : '✅ OS criada com sucesso!', 'ok'); fecharOSModal(); carregarOS(); }
+  btn.disabled = false;
+  btn.textContent = _osAtual ? '💾 Atualizar OS' : '💾 Salvar OS';
+}
+
 // ── PERMISSÕES ─────────────────────────────────────────
 const ABAS_CONFIG = [
-  { key: "venda",        label: "PDV / Venda",      sempre: true },
-  { key: "mesas",        label: "Mesas" },
-  { key: "combos",       label: "Combos" },
-  { key: "fiado",        label: "Fiado / Contas" },
-  { key: "produtos",     label: "Produtos" },
-  { key: "dashboard",    label: "Dashboard" },
-  { key: "caixa",        label: "Caixa" },
-  { key: "relatorio",    label: "Relatório" },
-  { key: "financeiro",   label: "Financeiro", apenasAdmin: true },
+  { key: "venda",        label: "PDV / Venda",      sempre: true,        moduloNome: "PDV" },
+  { key: "mesas",        label: "Mesas",                                  moduloNome: "Mesas" },
+  { key: "combos",       label: "Combos",                                 moduloNome: "Combos" },
+  { key: "fiado",        label: "Fiado / Contas",                         moduloNome: "Fiado" },
+  { key: "produtos",     label: "Produtos",          sempre: true,        moduloNome: "Estoque" },
+  { key: "dashboard",    label: "Dashboard",         sempre: true,        moduloNome: "Relatórios" },
+  { key: "caixa",        label: "Caixa",             sempre: true,        moduloNome: "Relatórios" },
+  { key: "relatorio",    label: "Relatório",         sempre: true,        moduloNome: "Relatórios" },
+  { key: "os",           label: "Ordem de Serviço",  somentePorTemplate: true, moduloNome: "Ordem de Serviço" },
+  { key: "financeiro",   label: "Financeiro",        apenasAdmin: true,   moduloNome: "Financeiro" },
 ];
+
+// Mapeamento entre nomes do template (modulos_ativos) e chaves do menu
+const MODULO_PARA_ABAS = {
+  "PDV":              ["venda"],
+  "Estoque":          ["produtos"],
+  "Mesas":            ["mesas"],
+  "Combos":           ["combos"],
+  "Fiado":            ["fiado"],
+  "Ordem de Serviço": ["os"],
+  "Relatórios":       ["relatorio", "dashboard", "caixa"],
+  "Financeiro":       ["financeiro"],
+};
 
 function aplicarPermissoes(usuario) {
   const isAdmin = usuario.role === "admin";
   const perms = usuario.permissoes || {};
 
+  // Verificar se o cliente tem template com modulos_ativos definidos
+  const modulosAtivos = usuario.clientes?.modulos_ativos;
+  const temTemplate = Array.isArray(modulosAtivos) && modulosAtivos.length > 0;
+
+  // Montar set de chaves de abas permitidas pelo template
+  let abasPermitadasPeloTemplate = new Set();
+  if (temTemplate) {
+    modulosAtivos.forEach(modulo => {
+      const abas = MODULO_PARA_ABAS[modulo] || [];
+      abas.forEach(a => abasPermitadasPeloTemplate.add(a));
+    });
+  }
+
   ABAS_CONFIG.forEach(aba => {
     const navEl = document.getElementById("nav-" + aba.key);
     if (!navEl) return;
-    // apenasAdmin: só aparece para admin, independente de permissões
+
+    // apenasAdmin: só aparece para admin, independente de qualquer coisa
     if (aba.apenasAdmin) {
-      navEl.style.display = isAdmin ? "flex" : "none";
+      const bloqueadoPeloTemplate = temTemplate && !abasPermitadasPeloTemplate.has(aba.key);
+      navEl.style.display = (isAdmin && !bloqueadoPeloTemplate) ? "flex" : "none";
       return;
     }
+
+    // Se tem template, aba precisa estar na lista do template
+    if (temTemplate && !abasPermitadasPeloTemplate.has(aba.key)) {
+      navEl.style.display = "none";
+      return;
+    }
+
+    // Se somentePorTemplate, só aparece quando template define explicitamente
+    if (aba.somentePorTemplate) {
+      navEl.style.display = (temTemplate && abasPermitadasPeloTemplate.has(aba.key)) ? "flex" : "none";
+      return;
+    }
+    // Sem template: lógica antiga (permissões por usuário)
     const visivel = isAdmin || aba.sempre || perms[aba.key] === true;
     navEl.style.display = visivel ? "flex" : "none";
   });
