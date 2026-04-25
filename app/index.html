@@ -4713,7 +4713,11 @@ async function confirmarMovimento() {
 
   if (_movimentoEditandoId) {
     // Modo edição
-    const { error } = await db.from('caixa_movimentos').update({ valor, descricao }).eq('id', _movimentoEditandoId);
+    const updateData = { valor, descricao };
+    if (_movimentoTipo === "sangria") {
+      updateData.saiu_do_caixa = window._saiuDoCaixa !== false;
+    }
+    const { error } = await db.from('caixa_movimentos').update(updateData).eq('id', _movimentoEditandoId);
     if (error) { toast("Erro ao salvar alteração.", "error"); console.error(error); return; }
     fecharMovimento();
     toast(`Lançamento atualizado com sucesso!`, "ok");
@@ -4834,6 +4838,15 @@ async function editarMovimento(id) {
   document.getElementById("movimento-confirmar-btn").textContent = "✏️ Salvar alteração";
   document.getElementById("movimento-valor").value = movs.valor;
   document.getElementById("movimento-descricao").value = movs.descricao;
+  document.getElementById("movimento-categoria-field").style.display = isSangria ? "block" : "none";
+  document.getElementById("movimento-saiu-caixa-field").style.display = isSangria ? "block" : "none";
+  if (isSangria) {
+    // Carregar valor atual do saiu_do_caixa (default true se não definido)
+    const saiuAtual = movs.saiu_do_caixa !== false;
+    window._saiuDoCaixa = saiuAtual;
+    setSaiuDoCaixa(saiuAtual);
+    if (movs.categoria) document.getElementById("movimento-categoria").value = movs.categoria;
+  }
   document.getElementById("movimento-modal").classList.add("open");
   setTimeout(() => document.getElementById("movimento-valor").focus(), 100);
 }
