@@ -2885,12 +2885,14 @@ function enviarFiadoParaPDV() {
   const saldo = saldoCliente(clienteAtual);
   if (saldo <= 0) { toast("Este cliente não tem saldo em aberto.", "error"); return; }
 
-  // Adicionar ao carrinho como item avulso representando o saldo do fiado
   const nomeItem = `Fiado — ${clienteAtual.nome}`;
-  const itemExistente = carrinho.find(i => i.isAvulso && i.nome === nomeItem);
+  const clienteId = clienteAtual.id;
+  const clienteNome = clienteAtual.nome;
+
+  const itemExistente = carrinho.find(i => i.isFiado && i.fiadoClienteId === clienteId);
   if (itemExistente) {
-    // Atualiza o valor se já estava no carrinho
     itemExistente.preco = saldo;
+    itemExistente.saldoOriginal = saldo;
     itemExistente.qtd = 1;
   } else {
     carrinho.push({
@@ -2901,15 +2903,17 @@ function enviarFiadoParaPDV() {
       max: 9999,
       isAvulso: true,
       isFiado: true,
-      fiadoClienteId: clienteAtual.id,
-      fiadoClienteNome: clienteAtual.nome
+      saldoOriginal: saldo,
+      fiadoClienteId: clienteId,
+      fiadoClienteNome: clienteNome
     });
   }
 
+  const toastMsg = `Fiado de ${clienteNome} (R$ ${saldo.toFixed(2).replace(".",",")}) adicionado ao carrinho.`;
   fecharDetalhe();
   nav('venda');
   renderCarrinho();
-  toast(`Fiado de ${clienteAtual.nome} (R$ ${saldo.toFixed(2).replace(".",",")}) adicionado ao carrinho.`, "ok");
+  toast(toastMsg, "ok");
 }
 
 function abrirPagamento() {
@@ -3696,21 +3700,32 @@ function atualizarPgto() {
   const totalPago = window._pgto.p2 ? v1 + v2 : v1;
   const troco = totalPago - total;
 
+  const temFiadoCarrinho = carrinho.some(i => i.isFiado);
   if (temDinheiro && totalPago > 0) {
     document.getElementById("pgto-troco-box").classList.add("show");
-    document.getElementById("pgto-troco-valor").textContent = troco >= 0
-      ? "R$ " + troco.toFixed(2).replace(".",",")
-      : "⚠️ Falta R$ " + Math.abs(troco).toFixed(2).replace(".",",");
-    document.getElementById("pgto-troco-valor").style.color = troco >= 0 ? "var(--blue)" : "var(--red)";
+    if (troco >= 0) {
+      document.getElementById("pgto-troco-valor").textContent = "R$ " + troco.toFixed(2).replace(".",",");
+      document.getElementById("pgto-troco-valor").style.color = "var(--blue)";
+    } else {
+      document.getElementById("pgto-troco-valor").textContent = "⚠️ Falta R$ " + Math.abs(troco).toFixed(2).replace(".",",");
+      document.getElementById("pgto-troco-valor").style.color = "var(--red)";
+    }
+  } else if (temFiadoCarrinho && troco < 0 && totalPago > 0) {
+    document.getElementById("pgto-troco-box").classList.add("show");
+    document.getElementById("pgto-troco-valor").textContent = `🔄 R$ ${Math.abs(troco).toFixed(2).replace(".",",")} volta ao fiado`;
+    document.getElementById("pgto-troco-valor").style.color = "var(--blue)";
   } else {
     document.getElementById("pgto-troco-box").classList.remove("show");
   }
 
   // Habilitar confirmar
+  const temFiado = carrinho.some(i => i.isFiado);
   const p1ok = window._pgto.p1 && v1 > 0;
   const p2ok = !window._pgto.p2 || (window._pgto.p2 && v2 > 0 && Math.abs(v1 + v2 - total) < 0.01);
   const somenteP1 = window._pgto.p1 && !window._pgto.p2 && Math.abs(v1 - total) < 0.01;
-  document.getElementById("pgto-confirmar-btn").disabled = !(somenteP1 || (p1ok && p2ok));
+  // Se tem fiado, permite confirmar com qualquer valor > 0 (pagamento parcial)
+  const parcialFiado = temFiado && window._pgto.p1 && v1 > 0 && v1 <= total;
+  document.getElementById("pgto-confirmar-btn").disabled = !(somenteP1 || (p1ok && p2ok) || parcialFiado);
 }
 
 function calcularTroco() { atualizarPgto(); }
@@ -3728,11 +3743,12 @@ async function confirmarPagamento() {
   const labels = { dinheiro:"💵 Dinheiro", pix:"📱 Pix", cartao:"💳 Cartão" };
   const p1 = labels[window._pgto.p1];
   const p2 = window._pgto.p2 ? labels[window._pgto.p2] : null;
-  const v1 = window._pgto.v1;
-  const v2 = window._pgto.v2;
+  // Ler diretamente dos campos para garantir o valor mais atual
+  const v1 = parseFloat(document.getElementById("pgto-1-valor")?.value) || window._pgto.v1 || 0;
+  const v2 = parseFloat(document.getElementById("pgto-2-valor")?.value) || window._pgto.v2 || 0;
   const pgtoLabel = p2
     ? `${p1} R$${v1.toFixed(2)} + ${p2} R$${v2.toFixed(2)}`
-    : `${p1}`;
+    : `${p1} R$${v1.toFixed(2)}`;
 
   // Verificar se há item de fiado no carrinho
   const itensFiado = carrinho.filter(i => i.isFiado);
@@ -3789,53 +3805,62 @@ async function confirmarPagamento() {
   }
 
   // Processar pagamento de fiado
+  const totalPagoGlobal = parseFloat((v2 > 0 ? v1 + v2 : v1).toFixed(2));
+
   for (const item of itensFiado) {
-    const valorFiado = item.preco * item.qtd;
+    const saldoOriginal = parseFloat((item.saldoOriginal || item.preco).toFixed(2));
+    const valorPago = parseFloat(Math.min(totalPagoGlobal, saldoOriginal).toFixed(2));
+    const saldoRestante = parseFloat((saldoOriginal - valorPago).toFixed(2));
     const fiadoClienteId = item.fiadoClienteId;
     const fiadoClienteNome = item.fiadoClienteNome;
 
-    // 1. Registrar crédito no fiado_lancamentos
+    console.log('[FIADO PGTO] saldoOriginal:', saldoOriginal, '| totalPagoGlobal:', totalPagoGlobal, '| valorPago:', valorPago, '| saldoRestante:', saldoRestante);
+
+    // 1. Registrar crédito pelo valor pago
     await db.from('fiado_lancamentos').insert([{
       fiado_cliente_id: fiadoClienteId,
       tipo: "credito",
       descricao: `Pagamento — ${pgtoLabel}`,
-      valor: valorFiado,
+      valor: valorPago,
       data,
       hora
     }]);
 
-    // 2. Registrar no caixa como movimentação
+    // 2. Crédito apenas pelo valor pago — o saldo restante permanece automaticamente
+    // pelos débitos já existentes no histórico (não é necessário inserir novo débito)
+
+    // 3. Registrar no caixa o valor efetivamente recebido
     if (_caixaAtual) {
       await db.from('caixa_movimentos').insert([{
         caixa_id: _caixaAtual.id,
         cliente_id: _clienteId,
         tipo: 'fiado',
-        valor: valorFiado,
-        descricao: `[Pgto Fiado] ${fiadoClienteNome} — ${pgtoLabel}`
+        valor: valorPago,
+        descricao: `[Pgto Fiado] ${fiadoClienteNome} — ${pgtoLabel}${saldoRestante > 0 ? ` (parcial, resta R$ ${saldoRestante.toFixed(2).replace(".",",")})` : ''}`
       }]);
     }
 
-    // 3. Registrar na tabela vendas para o financeiro (com forma de pagamento real)
+    // 4. Registrar na tabela vendas para o financeiro
     await db.from('vendas').insert([{
       cliente_id: _clienteId,
       caixa_id: _caixaAtual?.id || null,
       produto: `Pgto Fiado — ${fiadoClienteNome}`,
       codigo: 'FIADO_PGTO',
       qtd: 1,
-      preco: valorFiado,
-      total: valorFiado,
+      preco: valorPago,
+      total: valorPago,
       forma_pgto: p1,
       forma_pgto2: p2 || null,
       valor_pgto1: v1,
       valor_pgto2: v2 || null,
-      obs: `Pgto Fiado ${fiadoClienteNome} — ${pgtoLabel}`
+      obs: `Pgto Fiado ${fiadoClienteNome} — ${pgtoLabel}${saldoRestante > 0 ? ` (parcial)` : ''}`
     }]);
 
-    // 4. Atualizar saldo do cliente na lista local se ele estiver carregado
+    // 5. Atualizar saldo do cliente na lista local
     const cli = clientes.find(c => c.id === fiadoClienteId);
     if (cli) {
       cli.lancamentos = cli.lancamentos || [];
-      cli.lancamentos.push({ tipo: "credito", valor: valorFiado, descricao: `Pagamento — ${pgtoLabel}`, data, hora });
+      cli.lancamentos.push({ tipo: "credito", valor: valorPago, descricao: `Pagamento — ${pgtoLabel}`, data, hora });
     }
   }
 
@@ -3845,8 +3870,9 @@ async function confirmarPagamento() {
   renderDashboard();
   renderPDVGrid();
   if (_caixaAtual) await mostrarCaixaAberto();
-  // Atualizar fiado se houver pagamento
+  // Atualizar fiado se houver pagamento — aguarda 800ms para garantir commit no banco
   if (itensFiado.length > 0) {
+    await new Promise(r => setTimeout(r, 800));
     await carregarFiado();
     renderFiado();
   }
