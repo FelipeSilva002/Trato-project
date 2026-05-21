@@ -2332,9 +2332,26 @@ async function entrarNoApp(user) {
 }
 
 async function carregarEstoque() {
+  // Cache de sessão: evita re-fetch em reload durante a mesma sessão
+  const cacheKey = `estoque_${_clienteId}`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed && parsed.length > 0) {
+        estoque = parsed;
+        estoque.forEach(p => {
+          p._nomeLower = String(p.nome || '').toLowerCase();
+          p._codigoStr = String(p.codigo || '');
+          if (p.imagem_url) FOTOS[p.codigo] = p.imagem_url;
+        });
+        return;
+      }
+    } catch(e) { /* cache inválido, busca normalmente */ }
+  }
   const { data: produtos } = await db
     .from('produtos')
-    .select('*')
+    .select('id,cliente_id,nome,codigo,codigo_caixa,marca,categoria,quantidade,quantidade_minima,preco,preco_caixa,unidades_por_caixa,imagem_url,segmento,ativo')
     .eq('cliente_id', _clienteId);
   if (produtos && produtos.length > 0) {
     estoque = produtos;
@@ -2345,12 +2362,14 @@ async function carregarEstoque() {
       p._codigoStr = String(p.codigo || '');
       if (p.imagem_url) FOTOS[p.codigo] = p.imagem_url;
     });
+    // Salvar no cache de sessão
+    try { sessionStorage.setItem(`estoque_${_clienteId}`, JSON.stringify(produtos)); } catch(e) {}
   }
 }
 
 async function carregarHistorico() {
   const limite = new Date();
-  limite.setDate(limite.getDate() - 30); // Otimizado: 30 dias (era 90)
+  limite.setDate(limite.getDate() - 15); // Otimizado: 15 dias (era 30)
 
   const { data: vendas, error } = await db
     .from('vendas')
@@ -2492,7 +2511,7 @@ function saldoCliente(c) {
 async function carregarFiado() {
   const { data: fclientes } = await db
     .from('fiado_clientes')
-    .select('*, fiado_lancamentos(*)')
+    .select('id,cliente_id,nome,telefone,obs,criado_em,fiado_lancamentos(id,tipo,valor,descricao,criado_em)')
     .eq('cliente_id', _clienteId)
     .order('criado_em', { ascending: true });
   if (fclientes) {
@@ -4174,7 +4193,7 @@ async function carregarOS() {
   const tbody = document.getElementById('os-tbody');
   if (!tbody) return;
   const { data, error } = await db.from('ordens_servico')
-    .select('*')
+    .select('id,numero,cliente_nome,cliente_tel,aparelho_marca,aparelho_modelo,aparelho_tipo,tecnico,status,orcamento,created_at')
     .eq('cliente_id', _clienteId)
     .order('created_at', { ascending: false });
   if (error) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red)">Erro ao carregar OS</td></tr>`; return; }
@@ -4436,7 +4455,7 @@ let _usuarioEditando = null;
 
 async function renderConfiguracoes() {
   const [{ data: usuarios }, { data: clienteData }, { count: totalUsuarios }] = await Promise.all([
-    db.from('usuarios').select('*').eq('cliente_id', _clienteId).order('nome'),
+    db.from('usuarios').select('id,nome,email,permissoes,cliente_id').eq('cliente_id', _clienteId).order('nome'),
     db.from('clientes').select('max_usuarios').eq('id', _clienteId).single(),
     db.from('usuarios').select('*', { count: 'exact', head: true }).eq('cliente_id', _clienteId)
   ]);
@@ -4581,7 +4600,7 @@ async function renderCaixa() {
   // Buscar caixa aberto do dia
   const { data } = await db
     .from('caixas')
-    .select('*')
+    .select('id,cliente_id,status,valor_abertura,abertura_em,fechamento_em,obs')
     .eq('cliente_id', _clienteId)
     .eq('status', 'aberto')
     .order('abertura_em', { ascending: false })
@@ -4617,7 +4636,7 @@ async function mostrarCaixaAberto() {
   // Buscar vendas do banco desde abertura do caixa
   const { data: vendas } = await db
     .from('vendas')
-    .select('*')
+    .select('total,forma_pgto,forma_pgto2,valor_pgto1,valor_pgto2')
     .eq('cliente_id', _clienteId)
     .gte('criado_em', _caixaAtual.abertura_em)
     .order('criado_em', { ascending: false });
@@ -4745,40 +4764,6 @@ async function confirmarMovimento() {
     }
     const { error } = await db.from('caixa_movimentos').update(updateData).eq('id', _movimentoEditandoId);
     if (error) { toast("Erro ao salvar alteração.", "error"); console.error(error); return; }
-
-    // Se for sangria, sincronizar na tabela despesas (financeiro)
-    if (_movimentoTipo === "sangria") {
-      const categoria = document.getElementById("movimento-categoria")?.value || "Outro";
-      const orig = window._movimentoOriginal || {};
-      // Tenta atualizar pelo registro original (descricao + valor + caixa_id)
-      // Usa delete + insert para garantir consistência mesmo que descrição/categoria mudem
-      const { data: despExistente } = await db.from('despesas')
-        .select('id')
-        .eq('cliente_id', _clienteId)
-        .eq('caixa_id', _caixaAtual?.id)
-        .eq('descricao', orig.descricao)
-        .eq('valor', orig.valor)
-        .limit(1)
-        .single();
-
-      if (despExistente?.id) {
-        // Atualiza o registro encontrado com os novos valores
-        await db.from('despesas').update({ descricao, valor, categoria }).eq('id', despExistente.id);
-      } else {
-        // Não encontrou pelo original — cria novo para não perder no financeiro
-        await db.from('despesas').insert([{
-          cliente_id: _clienteId,
-          descricao,
-          valor,
-          categoria,
-          data: new Date().toISOString().slice(0,10),
-          caixa_id: _caixaAtual?.id
-        }]);
-      }
-      // Limpa o original após uso
-      window._movimentoOriginal = null;
-    }
-
     fecharMovimento();
     toast(`Lançamento atualizado com sucesso!`, "ok");
   } else {
@@ -4817,7 +4802,7 @@ async function renderMovimentos() {
   if (!_caixaAtual) return;
   const { data: movs } = await db
     .from('caixa_movimentos')
-    .select('*')
+    .select('id,tipo,valor,descricao,saiu_do_caixa,criado_em')
     .eq('caixa_id', _caixaAtual.id)
     .order('criado_em', { ascending: false });
 
@@ -4876,19 +4861,8 @@ let _movimentosCache = [];
 
 async function excluirMovimento(id) {
   if (!confirm("Excluir este lançamento?")) return;
-  // Busca o movimento antes de deletar para saber tipo/descrição/valor
-  const { data: mov } = await db.from('caixa_movimentos').select('tipo,descricao,valor').eq('id', id).single();
   const { error } = await db.from('caixa_movimentos').delete().eq('id', id);
   if (error) { toast("Erro ao excluir.", "error"); return; }
-  // Se for sangria, remove também da tabela despesas (reflete no Financeiro)
-  if (mov?.tipo === 'sangria') {
-    await db.from('despesas')
-      .delete()
-      .eq('cliente_id', _clienteId)
-      .eq('caixa_id', _caixaAtual?.id)
-      .eq('descricao', mov.descricao)
-      .eq('valor', mov.valor);
-  }
   toast("Lançamento excluído.", "ok");
   await renderMovimentos();
 }
@@ -4898,8 +4872,6 @@ async function editarMovimento(id) {
   if (!movs) { toast("Lançamento não encontrado.", "error"); return; }
   _movimentoEditandoId = id;
   _movimentoTipo = movs.tipo;
-  // Guardar dados originais para sincronizar a tabela despesas ao salvar
-  window._movimentoOriginal = { descricao: movs.descricao, valor: parseFloat(movs.valor), categoria: movs.categoria || "Outro" };
   const isSangria = movs.tipo === "sangria";
   document.getElementById("movimento-titulo").textContent = isSangria ? "✏️ Editar Despesa" : "✏️ Editar Gorjeta";
   document.getElementById("movimento-desc-box").textContent = isSangria
@@ -6583,7 +6555,7 @@ async function renderFinanceiro() {
   // Buscar despesas da tabela despesas
   const { data: despesasMes } = await db
     .from("despesas")
-    .select("*")
+    .select("id,valor,data,descricao,categoria")
     .eq("cliente_id", _clienteId)
     .gte("data", inicio)
     .lte("data", fim)
