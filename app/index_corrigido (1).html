@@ -91,6 +91,7 @@ body {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trato Gestão · Sistema de Gestão</title>
+<script>console.log("TRATO_DEBUG arquivo CORRIGIDO carregado v2");</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3801,7 +3802,8 @@ async function confirmarPagamento() {
 
   // Salvar vendas normais no banco
   if (registrosVenda.length > 0) {
-    await db.from('vendas').insert(registrosVenda);
+    const { error: _errV } = await db.from('vendas').insert(registrosVenda);
+    console.log("TRATO_DEBUG venda inserida erro:", _errV, "qtd:", registrosVenda.length);
   }
 
   // Processar pagamento de fiado
@@ -6546,22 +6548,41 @@ async function renderFinanceiro() {
   const fimDate = new Date(ano, mes, 0);
   const fim = `${ano}-${String(mes).padStart(2,"0")}-${String(fimDate.getDate()).padStart(2,"0")}`;
 
-  // Buscar totais do mês via RPC (sem limite de linhas)
-  const { data: rpcData, error: rpcError } = await db.rpc("get_financeiro_mes", {
-    p_cliente_id: _clienteId,
-    p_inicio: inicio + "T00:00:00-03:00",
-    p_fim: fim + "T23:59:59-03:00"
+  // Buscar vendas do mês diretamente da tabela vendas (mais confiável que total_vendas dos caixas)
+  const { data: vendas } = await db
+    .from("vendas")
+    .select("total,forma_pgto,forma_pgto2,valor_pgto1,valor_pgto2,criado_em")
+    .eq("cliente_id", _clienteId)
+    .gte("criado_em", inicio + "T00:00:00-03:00")
+    .lte("criado_em", fim + "T23:59:59-03:00")
+    .limit(10000);
+
+  console.log("TRATO_DEBUG faturamento vendas:", (vendas||[]).length, "inicio:", inicio, "fim:", fim);
+  let faturamento = 0, totDin = 0, totPix = 0, totCar = 0, totFiado = 0;
+  (vendas || []).forEach(v => {
+    const vt = parseFloat(v.total||0);
+    faturamento += vt;
+    const f1 = (v.forma_pgto||"").toLowerCase();
+    // Fiado: contabiliza no faturamento mas em categoria própria
+    if (f1 === "fiado") { totFiado += vt; return; }
+    const f2 = (v.forma_pgto2||"").toLowerCase();
+    const v1 = parseFloat(v.valor_pgto1||0);
+    const v2 = parseFloat(v.valor_pgto2||0);
+    const totalPgto = v2 > 0 ? v1 + v2 : v1;
+    if (f2) {
+      if (f1.includes("dinheiro")) totDin += (v1/(totalPgto||1)) * vt;
+      else if (f1.includes("pix")) totPix += (v1/(totalPgto||1)) * vt;
+      else if (f1.includes("cartão")||f1.includes("cartao")) totCar += (v1/(totalPgto||1)) * vt;
+      if (f2.includes("dinheiro")) totDin += (v2/(totalPgto||1)) * vt;
+      else if (f2.includes("pix")) totPix += (v2/(totalPgto||1)) * vt;
+      else if (f2.includes("cartão")||f2.includes("cartao")) totCar += (v2/(totalPgto||1)) * vt;
+    } else {
+      if (f1.includes("dinheiro")) totDin += vt;
+      else if (f1.includes("pix")) totPix += vt;
+      else if (f1.includes("cartão")||f1.includes("cartao")) totCar += vt;
+      else totDin += vt;
+    }
   });
-
-  if (rpcError) console.error("[FINANCEIRO] Erro RPC:", rpcError);
-
-  const rpc = rpcData?.[0] || {};
-  let faturamento = parseFloat(rpc.total_faturamento || 0);
-  let totDin      = parseFloat(rpc.total_dinheiro    || 0);
-  let totPix      = parseFloat(rpc.total_pix         || 0);
-  let totCar      = parseFloat(rpc.total_cartao      || 0);
-  let totFiado    = parseFloat(rpc.total_fiado       || 0);
-  const qtdVendas = parseInt(rpc.qtd_vendas          || 0);
 
   // Buscar despesas da tabela despesas
   const { data: despesasMes } = await db
@@ -6579,7 +6600,7 @@ async function renderFinanceiro() {
   const fmt = v => "R$ " + v.toFixed(2).replace(".",",");
 
   document.getElementById("fin-faturamento").textContent = fmt(faturamento);
-  document.getElementById("fin-fat-meta").textContent = `${qtdVendas} venda(s) no mês`;
+  document.getElementById("fin-fat-meta").textContent = `${(vendas||[]).length} venda(s) no mês`;
   document.getElementById("fin-despesas").textContent = fmt(totalDespesas);
   document.getElementById("fin-desp-meta").textContent = `${(despesasMes||[]).length} lançamento(s) no mês`;
   const lucroEl = document.getElementById("fin-lucro");
